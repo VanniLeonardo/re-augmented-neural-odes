@@ -20,7 +20,7 @@ This repository is being converted into a **ReScience C** replication of **Dupon
 claims. See [`REPLICATION_PLAN.md`](REPLICATION_PLAN.md) for scope and
 [`CHANGELOG_REPLICATION.md`](CHANGELOG_REPLICATION.md) for changes vs the coursework.
 The Rubanova / Latent-ODE / sine / spiral experiments are **out of scope** and excluded
-(see [`extra/README.md`](extra/README.md)).
+(see [`OUT_OF_SCOPE.md`](OUT_OF_SCOPE.md)).
 
 **No external accounts are needed.** Experiment logging defaults to a local CSV backend
 (`NODE_LOGGER=csv`); set `NODE_LOGGER=wandb` only to opt into Weights & Biases.
@@ -64,7 +64,7 @@ NeuralODEs/
 │   └── timeseries.py             # Standalone irregular time-series dataset
 ├── models/
 │   ├── continuous.py             # ODEFunc, ODEBlock, ConvODEFunc, Latent ODE modules
-│   ├── networks.py               # ODENet, ConvODENet, weight-shared DiscreteResNet
+│   ├── networks.py               # ODENet, ConvODENet, EulerDiscretizedODENet (weight-tied Euler baseline)
 │   └── ode_rnn.py                # Standalone ODE-RNN and GRU baselines
 ├── scripts/
 │   ├── train_discrete_mnist.py   # MNIST discrete residual baseline
@@ -107,11 +107,11 @@ MNIST is downloaded automatically by `torchvision` into `./data` the first time 
 
 ## Quick checks
 
-The files `scripts/test_continuous_mnist.py` and `scripts/test_discrete_mnist.py` are manual smoke scripts. Run them directly only when checking one MNIST forward pass:
+The files `scripts/smoke_continuous_mnist.py` and `scripts/smoke_discrete_mnist.py` are manual one-forward-pass scripts (renamed from `test_*.py` so pytest does not collect them). Run them directly only when checking one MNIST forward pass:
 
 ```bash
-python -m scripts.test_discrete_mnist
-python -m scripts.test_continuous_mnist
+python -m scripts.smoke_discrete_mnist
+python -m scripts.smoke_continuous_mnist
 ```
 
 ---
@@ -133,9 +133,13 @@ python -m scripts.test_continuous_mnist
 
 ## Reproducing the MNIST baselines
 
-### Discrete residual baseline
+### Weight-tied Euler baseline (`EulerDiscretizedODENet`)
 
-The discrete model is a weight-shared Euler ResNet: the same vector-field MLP is reused across residual steps. This makes the parameter count directly comparable to the ODE-Net.
+The "discrete baseline" is a fixed-step **Euler discretisation of the same ODE**, with a single
+`ODEFunc` weight-tied across steps for exact parameter parity with the ODE-Net. It is **not** an
+independent ResNet — see [`DEVIATIONS.md`](DEVIATIONS.md). Naming it honestly matters: "the
+discrete model and the ODE-Net reach comparable accuracy" is nearly tautological when they share
+one vector field integrated two ways.
 
 ```bash
 python -m scripts.train_discrete_mnist \
@@ -198,7 +202,7 @@ python -m scripts.train_anode_circles \
   --n_samples 1000 \
   --batch_size 64 \
   --hidden_dim 2 \
-  --ode_hidden_dim 64 \
+  --ode_hidden_dim 32 \
   --augment_dims 0,1,2,5 \
   --seeds 0,1,2 \
   --log_every 20 \
@@ -221,7 +225,7 @@ python -m scripts.train_anode_slice_circles \
   --n_val_samples 3000 \
   --batch_size 64 \
   --hidden_dim 2 \
-  --ode_hidden_dim 64 \
+  --ode_hidden_dim 32 \
   --augment_dims 0,2 \
   --seeds 0,1,2 \
   --log_every 20 \
@@ -399,7 +403,7 @@ Randomness is controlled through explicit seeds where the experiments average ov
 ## Implementation notes
 
 - `ODENet` and `ConvODENet` use `torchdiffeq.odeint_adjoint`, so the backward pass is computed through the adjoint method.
-- `DiscreteResNet` is a weight-shared Euler residual baseline. It reuses one `ODEFunc` across residual steps so that the comparison to the ODE-Net is parameter-matched.
+- `EulerDiscretizedODENet` (formerly `DiscreteResNet`) is a weight-tied Euler discretisation of the ODE-Net's vector field. It reuses one `ODEFunc` across steps for exact parameter parity; it is a controlled baseline, not an independent discrete architecture (see `DEVIATIONS.md`).
 - NFE is counted inside the vector-field modules through an integer counter `nfe`. The training loop snapshots the counter before and after `loss.backward()` to separate forward and backward NFE.
-- In the ANODE experiments, `hidden_dim=2` is the actual ODE state dimension before augmentation, while `ode_hidden_dim=64` is only the internal width of the vector-field MLP.
+- In the ANODE experiments, `hidden_dim=2` is the actual ODE state dimension before augmentation, while `ode_hidden_dim=32` is only the internal width of the vector-field MLP (Dupont toy field).
 - The SLURM files under `scripts/` document the cluster runs used during development. They contain cluster-specific accounts and paths, so the local commands above are the portable way to reproduce the experiments.

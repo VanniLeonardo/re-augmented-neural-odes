@@ -59,12 +59,17 @@ class ODEBlock(nn.Module):
         solver_type: str = "dopri5",
         atol: float = 1e-3,
         rtol: float = 1e-3,
+        options: Optional[Dict] = None,
     ):
         super().__init__()
         self.ode_func = ode_func
         self.solver_type = solver_type
         self.atol = atol
         self.rtol = rtol
+        # Solver options passed through to torchdiffeq (e.g. {"step_size": 1/N} for a
+        # fixed-step solver). Enables the C4 memory-vs-NFE experiment and analytic
+        # NFE tests. None -> torchdiffeq defaults.
+        self.options = options
 
         self.register_buffer("integration_time", torch.tensor([0.0, 1.0]).float())
 
@@ -83,6 +88,7 @@ class ODEBlock(nn.Module):
             rtol=self.rtol,
             atol=self.atol,
             method=self.solver_type,
+            options=self.options,
         )
 
         if return_trajectory:
@@ -92,26 +98,45 @@ class ODEBlock(nn.Module):
 
 
 class ConvODEFunc(nn.Module):
-    """Convolutional Vector Field for Image Data."""
+    """Convolutional vector field with PER-LAYER time injection (ANODE App. F.1.2).
 
-    def __init__(self, num_channels: int):
+    Following the paper, the time ``t`` is appended as an extra channel *before each
+    convolution* in the 1x1 -> 3x3 -> 1x1 (64-filter) stack. Written independently
+    of Dupont's released code: plain ``nn.Conv2d`` layers with an explicit
+    ``_with_time`` helper that concatenates the time channel STATE-FIRST, rather
+    than his ``Conv2dTime(nn.Conv2d)`` subclass (which prepends time).
+
+    (The earlier coursework version concatenated time only ONCE at the input; that
+    is a different vector field and is recorded in DEVIATIONS.md.)
+    """
+
+    def __init__(self, num_channels: int, hidden_channels: int = 64):
         super().__init__()
         self.nfe = 0
-        # Architecture strictly following the ANODE paper Appendix F.1.2
-        self.net = nn.Sequential(
-            nn.Conv2d(num_channels + 1, 64, kernel_size=1, padding=0),
-            nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(64, num_channels, kernel_size=1, padding=0),
+        self.conv1 = nn.Conv2d(
+            num_channels + 1, hidden_channels, kernel_size=1, padding=0
         )
+        self.conv2 = nn.Conv2d(
+            hidden_channels + 1, hidden_channels, kernel_size=3, padding=1
+        )
+        self.conv3 = nn.Conv2d(
+            hidden_channels + 1, num_channels, kernel_size=1, padding=0
+        )
+
+    def _with_time(self, t: torch.Tensor, h: torch.Tensor) -> torch.Tensor:
+        """Append a constant time channel to the feature map (state-first)."""
+        t_channel = (
+            torch.ones(h.size(0), 1, h.size(2), h.size(3), device=h.device, dtype=h.dtype)
+            * t
+        )
+        return torch.cat([h, t_channel], dim=1)
 
     def forward(self, t: torch.Tensor, h: torch.Tensor) -> torch.Tensor:
         self.nfe += 1
-        # t is a scalar. Expand it to match the (Batch, 1, H, W) shape of h
-        t_expanded = torch.ones(h.size(0), 1, h.size(2), h.size(3), device=h.device) * t
-        h_time = torch.cat([h, t_expanded], dim=1)  # Concatenate on channel dimension
-        return self.net(h_time)
+        h = torch.relu(self.conv1(self._with_time(t, h)))
+        h = torch.relu(self.conv2(self._with_time(t, h)))
+        h = self.conv3(self._with_time(t, h))
+        return h
 
 
 class LatentODEFunc(nn.Module):

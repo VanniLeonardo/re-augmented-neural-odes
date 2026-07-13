@@ -1,9 +1,9 @@
-# `extra/` — coursework material OUTSIDE the ReScience C replication scope
+# OUT_OF_SCOPE — coursework material excluded from the ReScience C replication
 
 The ReScience C submission replicates **Dupont et al. 2019 (Augmented Neural ODEs)**
 (primary) and a subset of **Chen et al. 2018 (Neural ODEs)** claims (C1–C4). The
 **Rubanova et al. 2019 (Latent ODEs) / ODE-RNN / synthetic sine & spiral** experiments
-from the original course project are **excluded** from the submission because:
+from the original course project are **excluded**, because:
 
 1. Rubanova's headline claims are on **PhysioNet / MuJoCo Hopper / Human Activity** —
    none of which the code runs — so no replication of the paper is possible at our scope.
@@ -12,18 +12,18 @@ from the original course project are **excluded** from the submission because:
 3. The synthetic 1-D sine can only be compared to Rubanova's *toy* Suppl. Table 2, and with
    heavy setup drift — it is architecture validation, not a controlled reproduction.
 
-See `REPLICATION_PLAN.md` §1.1 / §3.C and the decision record (D3) for the full rationale.
+See `REPLICATION_PLAN.md` §1.1 / §3.C and decision record D3 for the full rationale.
 
 ## What this means concretely
 
 - These experiments are **not** part of `make reproduce-all` and are **not** in the gated
   test suite (`make test` / `make smoke`, which run `pytest -m "not extra"`).
 - The code is **kept in the repository** (not deleted) for coursework provenance, but it is
-  not maintained to the replication's reproducibility standard (e.g. its entry points still
-  use W&B directly and are not part of the pinned smoke pipeline).
+  not maintained to the replication's reproducibility standard (its entry points still use
+  W&B directly and are not part of the pinned smoke pipeline).
 - Rubanova 2019 is cited only as **related work** in the paper.
 
-## Files belonging to this excluded scope (left in place)
+## Excluded files (left in place)
 
 | Path | Role |
 |---|---|
@@ -38,5 +38,5 @@ See `REPLICATION_PLAN.md` §1.1 / §3.C and the decision record (D3) for the ful
 | `tests/test_timeseries.py` | Time-series unit tests (marked `extra`; excluded from the gated suite). |
 | `results/3way_*.json`, `results/C*_spiral.json`, `results/final_*_e10.json` | Committed time-series result JSONs. |
 
-To run this material anyway you need the optional `wandb` dependency (or
-`NODE_LOGGER=none`) and the coursework instructions in the top-level `README.md`.
+To run this material anyway you need the optional `wandb` dependency (or `NODE_LOGGER=none`)
+and the coursework instructions in the top-level `README.md`.

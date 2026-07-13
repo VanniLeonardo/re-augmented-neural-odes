@@ -13,7 +13,7 @@ SMOKE_DIR := .smoke
 SEEDS ?= 0,1,2,3,4
 
 .PHONY: help smoke test reproduce-all mnist-baselines table2 table3 anode-figures \
-        solver-ablation fig3 env docker-build docker-smoke clean
+        solver-ablation fig3 d8 env docker-build docker-smoke clean
 
 help:
 	@echo "Targets:"
@@ -83,13 +83,13 @@ mnist-baselines:
 
 table2:
 	$(PY) -m scripts.train_anode_circles --epochs 500 --lr 3e-3 --n_samples 1000 \
-	  --batch_size 64 --hidden_dim 2 --ode_hidden_dim 64 --augment_dims 0,1,2,5 \
+	  --batch_size 64 --hidden_dim 2 --augment_dims 0,1,2,5 \
 	  --seeds $(SEEDS) --log_every 50 --write_results
 	@$(MAKE) anode-figures
 
 table3:
 	$(PY) -m scripts.train_anode_slice_circles --epochs 500 --lr 3e-3 --n_samples 1000 \
-	  --n_val_samples 3000 --batch_size 64 --hidden_dim 2 --ode_hidden_dim 64 \
+	  --n_val_samples 3000 --batch_size 64 --hidden_dim 2 \
 	  --augment_dims 0,2 --seeds $(SEEDS) --log_every 50 --write_results
 	@$(MAKE) anode-figures
 
@@ -103,6 +103,9 @@ solver-ablation:
 fig3:
 	$(PY) -m scripts.train_continuous_mnist --network_type cnn --epochs 10 \
 	  --hidden_dim 256 --lr 1e-3 --seed 0 --tol-diagnostic
+
+d8:  # Dupont Fig 3 / Prop 1: 1-D crossing-flow demo (NODE fails, ANODE succeeds)
+	$(PY) -m scripts.train_crossing_flow --seeds $(SEEDS) --epochs 150
 
 # --------------------------------------------------------------------------
 # Environment / container.

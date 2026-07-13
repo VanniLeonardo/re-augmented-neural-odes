@@ -42,8 +42,11 @@ class ANODECirclesConfig:
     atol: float = 1e-3
     rtol: float = 1e-3
 
+    # Toy setup integrates the ODE in data space (d=2, no downsampling stem).
+    # hidden_dim is vestigial here (state = data_dim = 2); the vector-field width
+    # is ode_hidden_dim = 32 to match Dupont's toy MLP field (App. F.1.1).
     hidden_dim: int = 2
-    ode_hidden_dim: int = 64
+    ode_hidden_dim: int = 32
     augment_dims: Tuple[int, ...] = (0, 1, 2, 5)
 
     seeds: Tuple[int, ...] = (0, 1, 2)

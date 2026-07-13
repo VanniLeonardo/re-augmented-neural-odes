@@ -11,12 +11,75 @@ Format: newest first. Each entry: *what changed*, *why*, *scope tag* (`infra` / 
 
 ---
 
-## Phase 1 — Stage A (P0 reproducibility infrastructure) — in progress (2026-07-13)
+## Phase 1 — Stage A corrections + Stage B (2026-07-13)
+
+### model faithfulness (must precede experiments) — see `DEVIATIONS.md`
+- **A1 — ODE now integrates in data space for the toy experiments.** Added `use_stem` to
+  `ODENet` (Identity "stem" when False; `ode_dim = data_dim`). `train_anode_circles`,
+  `train_anode_slice_circles`, `solver_ablation` now pass `use_stem=False`. Toy vf width
+  `ode_hidden_dim` 64 → **32** (Dupont App. F.1.1). *Why:* the `Linear+Tanh` stem is a
+  learned warp the paper's toy setup does not have.
+- **FINDING (stem validation, 30 ep, 2 seeds, thin circles):** removing the stem did **NOT**
+  degrade the NODE — val acc **0.998 (no-stem) vs 0.873 (stem)**, within noise. So the stem
+  is *not* why the coursework NODE reached ~90%. The **dominant factor is the dataset
+  geometry (deviation A3)**: our thin concentric circles are a much weaker topological
+  bottleneck than Dupont's filled-disk-inside-annulus "spheres". Reproducing Dupont's
+  NODE-failure requires the sphere geometry — **A3 elevated to do-early in Stage C.** (Not
+  tuned back; data-space integration is the faithful choice regardless.)
+- **B1 — `ConvODEFunc` now injects time before every conv** (App. F.1.2), independently
+  written (`_with_time` helper, state-first concat; not Dupont's `Conv2dTime` subclass). Was:
+  a single time concat at the input (a different vector field). Also fixed a latent dtype bug
+  in the time channel. ConvODENet param count changes accordingly (conv2/conv3 gain +1 input ch).
+- **Item 3 — renamed `DiscreteResNet` → `EulerDiscretizedODENet`** ("weight-tied Euler ResNet")
+  across code/docs; kept a deprecated alias. *Why:* it is a fixed-step Euler discretisation of
+  the *same* field (weight-tied), not an independent ResNet — so "comparable accuracy" is close
+  to tautological. Documented in `DEVIATIONS.md` D1.
+- Added a `solver_options` passthrough (`ODEBlock`/`ODENet`) for fixed-step solving — enables
+  the analytic NFE tests and the Stage-C C4 memory-vs-NFE experiment.
+
+### docs (first-class ReScience deliverables)
+- **`DEVIATIONS.md`** — full whole-codebase audit of where our implementation differs from the
+  papers *as described* (geometry, widths, time-dependence, augmentation placement, solver/tol,
+  optimiser, lr, batch, epochs, #runs), each with expected effect on the claim and status
+  (RESOLVED / OPEN / INTENDED).
+- **`PROVENANCE.md` trimmed to copying-provenance only** and cross-linked to `DEVIATIONS.md`
+  (the two questions — "copied?" vs "matches the paper?" — are now cleanly separated).
+- **Item 5 — replaced misplaced `extra/README.md` with root `OUT_OF_SCOPE.md`** (the excluded
+  files are not physically in `extra/`); updated all references.
+- **Item 2 recorded in the plan:** the C2 characterisation sweep now includes a **torchdiffeq
+  version axis** (0.2.5 + earlier/later) — if the bwd≈fwd ratio holds only in 0.2.5 it is a bug
+  report, not a finding.
+
+### tests — Stage B (NFE split first, adversarial) — `pytest -m "not extra"` = 45 passed
+- **`tests/test_nfe_split.py` (22 tests): the C2 counter is PROVEN correct.** Forward NFE is
+  asserted *exactly* analytic for fixed-step solvers (euler=N, midpoint=2N, rk4=4N, verified
+  against torchdiffeq 0.2.5); the adjoint backward for fixed-step rk4 is **exactly forward**
+  (ratio 1.0, the C2 mechanism at unit level); `odeint`≡`odeint_adjoint` forward; the engine's
+  snapshot recovers 4N/4N end-to-end; reset-per-forward makes cycles independent; a shared
+  `ODEFunc` across two blocks sums (adversarial double-count check).
+- **`tests/test_stage_b.py` (17 tests):** adjoint-vs-direct-backprop gradient agreement to
+  **rtol 1e-5/atol 1e-6** for fixed-step rk4 (float64), *plus* a documented caveat test that
+  **adaptive** dopri5 adjoint gradients legitimately differ from direct backprop
+  (optimise-then-discretise); augmentation zero-init + shape; ODE-Net↔Euler param parity across
+  widths {16,64,160} × depths {2,5,50} + depth-independence; CPU fixed-step seed determinism
+  (with GPU/adaptive non-determinism documented).
+
+### experiment — D8 crossing-flow (Dupont Fig 3 / Prop 1), pulled forward for the GPU gate
+- `scripts/train_crossing_flow.py`. **Caught and fixed a faithfulness bug in our own script:**
+  with a learnable linear readout `w·φ(x)+b` a 1-D NODE can cheat the crossing via `w<0`
+  (NODE "succeeded" on 2/3 seeds). Dupont's Fig 3 is about the **flow itself**, so the demo now
+  outputs the flow endpoint's data coordinate (readout-free, `CrossingFlow`).
+- **RESULT (GPU, 5 seeds):** NODE MSE **1.0000 ± 0.0000** (the order-preserving 1-D flow cannot
+  cross → collapses to 0), ANODE-p1 **0.0005 ± 0.0003** — a clean, faithful reproduction.
+
+---
+
+## Phase 1 — Stage A (P0 reproducibility infrastructure) — COMPLETE (2026-07-13)
 
 ### scope
 - **Rubanova / Latent-ODE / ODE-RNN / sine / spiral CUT from the submission.** Per approved
   Phase-1 scope. Code is *not deleted*; it is excluded from `make reproduce-all` and from the
-  gated test suite, and documented in `extra/README.md`. Reason: the paper's headline
+  gated test suite, and documented in `OUT_OF_SCOPE.md`. Reason: the paper's headline
   benchmarks (PhysioNet / MuJoCo / Human Activity) are unreached, and the 2-D spiral is a
   Chen-2018 experiment, not a Rubanova one — so no replication claim is possible at our scope.
 - **Chen faithful conv Table-1 row dropped**; our MNIST rows are relabelled as our own seeded
@@ -72,7 +135,7 @@ Format: newest first. Each entry: *what changed*, *why*, *scope tag* (`infra` / 
   (`table2`/`table3`/`solver-ablation`/`mnist-baselines`/`fig3`/`anode-figures`), `docker-smoke`,
   `clean`. A `NODE_MAX_BATCHES` env cap (read in `training/engine.py`) bounds MNIST for smoke.
 - **`PROVENANCE.md`** written (per-module written-from-paper / library-dependency verdicts).
-- **`extra/README.md`** documents the excluded Rubanova material.
+- **`OUT_OF_SCOPE.md`** documents the excluded Rubanova material.
 
 ### Stage A acceptance gate — VERIFIED
 Built the CPU Docker image and ran `make smoke` inside it (no GPU, **wandb not installed**,

@@ -28,6 +28,5 @@ python -m scripts.train_anode_circles \
   --augment_dims 0,1,2,5 \
   --seeds 0,1,2,3,4 \
   --hidden_dim 2 \
-  --ode_hidden_dim 64 \
   --log_every 50 \
   --write_results

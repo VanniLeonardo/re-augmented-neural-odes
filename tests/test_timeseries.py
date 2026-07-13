@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 # Rubanova / Latent-ODE time-series work is OUT OF SCOPE for the ReScience
-# replication (see extra/README.md). These tests still pass and are kept, but are
+# replication (see OUT_OF_SCOPE.md). These tests still pass and are kept, but are
 # marked `extra` so the gated suite (`pytest -m "not extra"`) excludes them.
 pytestmark = pytest.mark.extra
 

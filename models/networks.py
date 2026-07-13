@@ -6,13 +6,16 @@ from models.continuous import ODEFunc, ODEBlock, ConvODEFunc
 class ODENet(nn.Module):
     """Full continuous-depth model for classification tasks.
 
-    Args:
-        data_dim (int): Dimensionality of the input data (e.g., 2 for circles).
-        hidden_dim (int): Dimensionality of the ODE hidden state.
-        num_classes (int): Number of output classes (e.g., 2 for binary classification).
-        solver_type (str): The ODE solver to use.
-        atol (float): Absolute error tolerance forwarded to ODEBlock.
-        rtol (float): Relative error tolerance forwarded to ODEBlock.
+    Two integration regimes (see DEVIATIONS.md):
+
+    * ``use_stem=False`` (toy experiments, Dupont): the ODE integrates in **data
+      space** (``d = data_dim``). There is NO learned projection before the flow,
+      so the homeomorphism property of the ODE flow applies to the raw inputs --
+      this is exactly the regime in which Dupont's toy argument (a NODE cannot
+      separate nested regions) holds. Augmentation appends ``augment_dim`` zeros.
+    * ``use_stem=True`` (MNIST MLP baseline): a ``Linear(data_dim, hidden_dim) +
+      Tanh`` stem projects the (flattened) image before the flow, and the ODE
+      integrates in that ``hidden_dim`` representation.
     """
 
     def __init__(
@@ -25,34 +28,50 @@ class ODENet(nn.Module):
         rtol: float = 1e-3,
         augment_dim: int = 0,
         ode_hidden_dim: int | None = None,
+        use_stem: bool = True,
+        solver_options: dict | None = None,
     ) -> None:
-        """Full continuous-depth model for classification tasks with optional augmentation.
-
+        """
         Args:
             data_dim (int): Dimensionality of the input data (e.g., 2 for circles).
-            hidden_dim (int): Dimensionality of the ODE hidden state.
-            num_classes (int): Number of output classes (e.g., 2 for binary classification).
+            hidden_dim (int): ODE state dimension when ``use_stem=True``. When
+                ``use_stem=False`` the ODE state is ``data_dim`` and ``hidden_dim``
+                is used only as the fallback vector-field width.
+            num_classes (int): Number of output classes.
             solver_type (str): The ODE solver to use.
             atol (float): Absolute error tolerance forwarded to ODEBlock.
             rtol (float): Relative error tolerance forwarded to ODEBlock.
-            augment_dim (int): Number of augmentation dimensions for ANODE. 0 for standard NODE.
-            ode_hidden_dim (Optional[int]): Width of the ODEFunc MLP. Defaults to hidden_dim for backward compatibility.
+            augment_dim (int): ANODE augmentation dimensions (0 for a standard NODE).
+            ode_hidden_dim (Optional[int]): Width of the ODEFunc MLP. Defaults to hidden_dim.
+            use_stem (bool): If False, integrate the ODE in data space (no learned
+                downsampling stem). Toy experiments set this False; MNIST keeps True.
         """
         super().__init__()
 
         self.augment_dim: int = augment_dim
-        self.ode_dim: int = hidden_dim + augment_dim
+        self.use_stem: bool = use_stem
 
-        # ODEFunc MLP width. Defaults to hidden_dim for backward compatibility.
+        if use_stem:
+            self.downsampling: nn.Module = nn.Sequential(
+                nn.Linear(data_dim, hidden_dim), nn.Tanh()
+            )
+            state_dim = hidden_dim
+        else:
+            # Data-space integration: identity "stem" keeps utils/plotting code
+            # (which calls model.downsampling) working uniformly.
+            self.downsampling = nn.Identity()
+            state_dim = data_dim
+
+        self.ode_dim: int = state_dim + augment_dim
         vf_hidden_dim: int = hidden_dim if ode_hidden_dim is None else ode_hidden_dim
 
-        self.downsampling = nn.Sequential(nn.Linear(data_dim, hidden_dim), nn.Tanh())
         self.ode_func = ODEFunc(in_features=self.ode_dim, hidden_dim=vf_hidden_dim)
         self.ode_block = ODEBlock(
             ode_func=self.ode_func,
             solver_type=solver_type,
             atol=atol,
             rtol=rtol,
+            options=solver_options,
         )
         self.fc = nn.Linear(self.ode_dim, num_classes)
 
@@ -122,10 +141,20 @@ class ConvODENet(nn.Module):
         return self.fc(h_T)
 
 
-class DiscreteResNet(nn.Module):
-    """Baseline discrete Residual Network for comparison.
+class EulerDiscretizedODENet(nn.Module):
+    r"""Weight-tied Euler discretisation of the ODE-Net (the "discrete baseline").
 
-    Uses standard Euler steps: $h_{t+1} = h_t + f(h_t, t)$
+    IMPORTANT (see DEVIATIONS.md): this is NOT an independent residual architecture.
+    It reuses a SINGLE shared ``ODEFunc`` across ``num_layers`` explicit Euler steps
+
+        $h_{t+1} = h_t + \tfrac{1}{L} f_\theta(h_t, t)$,
+
+    which is exactly a fixed-step Euler discretisation of the same ODE the ODE-Net
+    integrates adaptively. Weight-tying gives exact parameter parity with the
+    ODE-Net, but it means "the discrete model and the ODE-Net reach comparable
+    accuracy" is close to tautological -- they are the same vector field, integrated
+    two ways. It is a legitimate controlled baseline, not a stand-in for a generic
+    ResNet with independent per-layer weights.
     """
 
     def __init__(
@@ -136,7 +165,7 @@ class DiscreteResNet(nn.Module):
 
         self.downsampling = nn.Sequential(nn.Linear(data_dim, hidden_dim), nn.Tanh())
 
-        # Using the exact same vector field architecture for fairness
+        # Single shared vector field reused across all Euler steps (weight-tied).
         self.layer_func = ODEFunc(in_features=hidden_dim, hidden_dim=hidden_dim)
 
         self.fc = nn.Linear(hidden_dim, num_classes)
@@ -144,11 +173,17 @@ class DiscreteResNet(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         h = self.downsampling(x)
 
-        # Discrete integration (Euler method with step size dt = 1/num_layers)
+        # Explicit Euler integration with step size dt = 1/num_layers.
         dt = 1.0 / self.num_layers
         for i in range(self.num_layers):
-            # Pass a dummy time tensor to match the ODEFunc signature
+            # Pass a dummy time tensor to match the ODEFunc signature.
             t_dummy = torch.tensor([i * dt], device=x.device, dtype=x.dtype)
             h = h + dt * self.layer_func(t_dummy, h)
 
         return self.fc(h)
+
+
+# Backwards-compatible alias (deprecated). The name "DiscreteResNet" overstated
+# what this baseline is; use EulerDiscretizedODENet. Kept so any external import
+# does not break, but it is not used internally.
+DiscreteResNet = EulerDiscretizedODENet

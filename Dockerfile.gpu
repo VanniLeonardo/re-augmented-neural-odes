@@ -1,0 +1,43 @@
+# GPU image for reproducing the NUMBERS (make reproduce-all). The CPU Dockerfile
+# only proves `make smoke`; reviewers reproducing results need CUDA.
+#
+# Built from the official pinned PyTorch CUDA 12.1 image so torch/torchvision/CUDA
+# exactly match the committed environment (RTX 3090, driver 595, CUDA 12.1).
+#
+# Build & run (requires nvidia-container-toolkit on the host):
+#   docker build -f Dockerfile.gpu -t neural-odes-gpu .
+#   docker run --rm --gpus all neural-odes-gpu python -c "import torch; print(torch.cuda.is_available())"
+#   docker run --rm --gpus all neural-odes-gpu make smoke
+#   docker run --rm --gpus all neural-odes-gpu make reproduce-all   # long
+#
+# If `--gpus all` fails with a CDI/vendor error, the host is missing
+# nvidia-container-toolkit (install it, or run the conda env directly — see
+# environment.yml / requirements-lock-gpu.txt).
+FROM pytorch/pytorch:2.5.1-cuda12.1-cudnn9-runtime
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    NODE_LOGGER=csv \
+    MPLBACKEND=Agg
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends make git \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# torch/torchvision/cuda come from the base image (pinned 2.5.1 / cu121).
+# Add the pinned scientific + solver stack (no wandb -> CSV logger by default).
+RUN pip install \
+        torchdiffeq==0.2.5 \
+        numpy==2.4.3 \
+        scipy==1.17.1 \
+        scikit-learn==1.8.0 \
+        matplotlib==3.10.9 \
+        pandas==3.0.3 \
+        rich==15.0.0 \
+        pytest==9.0.3
+
+COPY . .
+
+CMD ["make", "smoke"]

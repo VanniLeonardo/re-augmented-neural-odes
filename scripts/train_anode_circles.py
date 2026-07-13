@@ -145,6 +145,7 @@ def _run_single(
         rtol=cfg.rtol,
         augment_dim=augment_dim,
         ode_hidden_dim=cfg.ode_hidden_dim,
+        use_stem=False,  # Dupont toy setup: integrate the ODE in data space (d=2).
     ).to(device)
 
     num_parameters = _count_parameters(model)

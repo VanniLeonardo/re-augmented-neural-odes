@@ -39,8 +39,9 @@ class SliceCirclesConfig:
     atol: float = 1e-3
     rtol: float = 1e-3
 
+    # Data-space integration (d=2, no stem); vf width 32 matches Dupont's toy field.
     hidden_dim: int = 2
-    ode_hidden_dim: int = 64
+    ode_hidden_dim: int = 32
     augment_dims: Tuple[int, ...] = (0, 2)
     seeds: Tuple[int, ...] = (0, 1, 2)
 
@@ -248,6 +249,7 @@ def _run_single(
         rtol=cfg.rtol,
         augment_dim=augment_dim,
         ode_hidden_dim=cfg.ode_hidden_dim,
+        use_stem=False,  # Dupont toy setup: integrate the ODE in data space (d=2).
     ).to(device)
 
     num_parameters = _count_parameters(model)

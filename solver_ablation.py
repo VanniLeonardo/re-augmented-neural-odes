@@ -103,6 +103,7 @@ def _run_single(
         solver_type=solver,
         atol=effective_atol,
         rtol=effective_rtol,
+        use_stem=False,  # toy circles: integrate in data space (d=2), vf width = hidden_dim.
     ).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg.lr)

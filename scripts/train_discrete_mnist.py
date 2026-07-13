@@ -1,7 +1,11 @@
-"""Train the weight-shared discrete (Euler) ResNet baseline on MNIST.
+"""Train the weight-tied Euler-discretised ODE-Net baseline on MNIST.
 
 This is the parameter-matched discrete counterpart to the MLP Neural-ODE (both
-204,650 params at hidden_dim=160). Reproducibility fixes vs the coursework:
+204,650 params at hidden_dim=160). It is a fixed-step Euler discretisation of the
+SAME vector field, weight-tied for exact parameter parity -- NOT an independent
+ResNet (see DEVIATIONS.md / models.networks.EulerDiscretizedODENet).
+
+Reproducibility fixes vs the coursework:
 - explicit ``--seed`` (python/numpy/torch/cuda + dataloader shuffle);
 - logging via the pluggable backend (CSV default, no W&B account);
 - robust ``memory_mb`` access so the script no longer crashes on CPU;
@@ -24,7 +28,7 @@ import torch
 import torch.nn as nn
 
 from data.dataloaders import get_mnist_dataloaders
-from models.networks import DiscreteResNet
+from models.networks import EulerDiscretizedODENet
 from training.engine import eval_epoch, train_epoch
 from training.logging_backend import get_logger
 from training.utils import set_seed
@@ -67,7 +71,7 @@ def main() -> None:
         batch_size=args.batch_size, seed=args.seed
     )
 
-    model = DiscreteResNet(
+    model = EulerDiscretizedODENet(
         data_dim=784,
         hidden_dim=args.hidden_dim,
         num_classes=10,
@@ -80,12 +84,12 @@ def main() -> None:
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     criterion = nn.CrossEntropyLoss()
 
-    run_name = f"mnist_discrete_L{args.num_layers}_seed{args.seed}"
+    run_name = f"mnist_euler_L{args.num_layers}_seed{args.seed}"
     logger = get_logger(
         run_name=run_name,
         project="neural-odes-30562",
         config={
-            "model": "DiscreteResNet",
+            "model": "EulerDiscretizedODENet",
             "dataset": "MNIST",
             "batch_size": args.batch_size,
             "hidden_dim": args.hidden_dim,

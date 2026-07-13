@@ -14,13 +14,13 @@ if str(PROJECT_ROOT) not in sys.path:
 import torch
 
 from data.dataloaders import get_mnist_dataloaders
-from models.networks import DiscreteResNet
+from models.networks import EulerDiscretizedODENet
 
 
 def main() -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     train_loader, _ = get_mnist_dataloaders(batch_size=64, seed=0)
-    model = DiscreteResNet(
+    model = EulerDiscretizedODENet(
         data_dim=784, hidden_dim=128, num_classes=10, num_layers=5
     ).to(device)
 
