@@ -1,0 +1,21 @@
+# Keep the build context small and reproducible.
+.git
+.gitignore
+# Exclude only the downloaded MNIST dataset, NOT the data/ source package
+# (data/dataloaders.py, data/synthetic.py, ...). MNIST is re-downloaded at runtime.
+data/MNIST/
+wandb/
+references/
+plots/
+figures/
+results/logs/
+results/smoke/
+.smoke/
+.pytest_cache/
+notebooks/
+latex/
+**/__pycache__/
+*.pyc
+*.pdf
+*.tar.gz
+.DS_Store

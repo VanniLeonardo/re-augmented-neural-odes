@@ -1,0 +1,35 @@
+# Pinned conda environment (GPU / CUDA 12.1) for the ReScience C replication.
+# Versions match the machine that produced the committed results:
+#   RTX 3090, driver 595, CUDA 12.1, python 3.11.15.
+#
+# This is the convenience GPU path. The GUARANTEED-reproducible artifact is the
+# Docker image (see Dockerfile + requirements.txt), which is what `make smoke`
+# is verified against. If your conda cannot solve these exact versions, use Docker.
+#
+#   conda env create -f environment.yml && conda activate neural_odes
+name: neural_odes
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.11
+  # ML framework + CUDA (from the pytorch/nvidia channels)
+  - pytorch=2.5.1
+  - torchvision=0.20.1
+  - pytorch-cuda=12.1
+  # Scientific stack
+  - numpy=2.4.3
+  - scipy=1.17.1
+  - scikit-learn=1.8.0
+  - matplotlib=3.10.9
+  - pandas=3.0.3
+  - rich=15.0.0
+  # Testing
+  - pytest=9.0.3
+  - pip
+  - pip:
+      - torchdiffeq==0.2.5
+      # wandb is OPTIONAL: logging defaults to the CSV backend (NODE_LOGGER=csv).
+      # Install it only if you want the wandb backend (NODE_LOGGER=wandb).
+      - wandb==0.26.1

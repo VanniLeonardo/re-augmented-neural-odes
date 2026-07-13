@@ -1,0 +1,30 @@
+program: scripts.train_continuous_mnist
+command:
+  - ${env}
+  - python
+  - "-m"
+  - ${program}
+method: bayes
+metric:
+  name: test_accuracy
+  goal: maximize
+parameters:
+  network_type:
+    value: "cnn"
+  lr:
+    min: 0.0005
+    max: 0.005
+  hidden_dim:
+    values:
+      - 32
+      - 64
+      - 128
+  batch_size:
+    values:
+      - 64
+      - 128
+      - 256
+  solver:
+    values:
+      - "dopri5"
+      - "rk4"
