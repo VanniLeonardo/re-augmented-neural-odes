@@ -133,6 +133,53 @@ def make_moons(
     return torch.tensor(X, dtype=torch.float32), torch.tensor(y, dtype=torch.long)
 
 
+def make_spheres(
+    n_samples: int = 3000,
+    noise: float = 0.0,
+    seed: int = 42,
+    r1: float = 0.5,
+    r2: float = 1.0,
+    r3: float = 1.5,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    r"""Dupont's concentric-**spheres** dataset in d=2 (App. F.2.1).
+
+    The FILLED inner disk ``||x|| <= r1`` (class 0) is enclosed by the annulus
+    ``r2 <= ||x|| <= r3`` (class 1). Unlike two thin circles, the inner class is a
+    solid region wrapped by the outer, so a NODE flow (a homeomorphism) composed with
+    a linear classifier genuinely cannot separate them without tearing -- this is the
+    hard topological bottleneck the paper's argument is about.
+
+    Class ratio matches the paper (1000 inner : 2000 outer at n_samples=3000).
+    Points are area-uniform within each region.
+
+    Args:
+        n_samples (int): total points; inner gets n//3, outer the rest (1:2).
+        noise (float): std of Gaussian coordinate noise (paper uses 0).
+        seed (int): RNG seed.
+        r1, r2, r3 (float): inner-disk radius, annulus inner/outer radii.
+    """
+    rng = np.random.default_rng(seed)
+    n_inner = n_samples // 3
+    n_outer = n_samples - n_inner
+
+    # Inner filled disk: area-uniform radius r = r1 * sqrt(U).
+    theta_in = rng.uniform(0.0, 2 * np.pi, n_inner)
+    rad_in = r1 * np.sqrt(rng.uniform(0.0, 1.0, n_inner))
+    inner = np.stack([rad_in * np.cos(theta_in), rad_in * np.sin(theta_in)], axis=1)
+
+    # Outer annulus [r2, r3]: area-uniform radius r = sqrt(U*(r3^2-r2^2)+r2^2).
+    theta_out = rng.uniform(0.0, 2 * np.pi, n_outer)
+    rad_out = np.sqrt(rng.uniform(0.0, 1.0, n_outer) * (r3**2 - r2**2) + r2**2)
+    outer = np.stack([rad_out * np.cos(theta_out), rad_out * np.sin(theta_out)], axis=1)
+
+    X = np.concatenate([inner, outer], axis=0)
+    if noise > 0.0:
+        X = X + rng.normal(0.0, noise, X.shape)
+    y = np.concatenate([np.zeros(n_inner), np.ones(n_outer)]).astype(np.int64)
+
+    return torch.tensor(X, dtype=torch.float32), torch.tensor(y, dtype=torch.long)
+
+
 @dataclass
 class SampleTensors:
     observed_context: Tensor

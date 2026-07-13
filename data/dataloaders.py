@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader, TensorDataset, random_split
 from torchvision import datasets, transforms
 from typing import Optional, Tuple
 
-from data.synthetic import make_circles, make_moons, make_spirals
+from data.synthetic import make_circles, make_moons, make_spheres, make_spirals
 
 
 def flatten_tensor(x: torch.Tensor) -> torch.Tensor:
@@ -61,6 +61,7 @@ _DATASET_REGISTRY = {
     "circles": make_circles,
     "spirals": make_spirals,
     "moons": make_moons,
+    "spheres": make_spheres,  # Dupont's filled-disk + annulus (App. F.2.1)
 }
 
 

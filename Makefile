@@ -107,6 +107,11 @@ fig3:
 d8:  # Dupont Fig 3 / Prop 1: 1-D crossing-flow demo (NODE fails, ANODE succeeds)
 	$(PY) -m scripts.train_crossing_flow --seeds $(SEEDS) --epochs 150
 
+factorial:  # A1/A3: geometry x stem x head, >=5 seeds, NFE logged -> which deviation matters
+	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.run_stem_geometry_factorial \
+	  --seeds $(SEEDS) --epochs 150 --max_num_steps 1500 --time_budget_s 180 --with_mlp_head
+	$(PY) -m scripts.print_factorial_table
+
 # --------------------------------------------------------------------------
 # Environment / container.
 # --------------------------------------------------------------------------

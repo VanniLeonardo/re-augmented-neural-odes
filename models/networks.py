@@ -30,6 +30,7 @@ class ODENet(nn.Module):
         ode_hidden_dim: int | None = None,
         use_stem: bool = True,
         solver_options: dict | None = None,
+        head_hidden_dim: int | None = None,
     ) -> None:
         """
         Args:
@@ -73,7 +74,19 @@ class ODENet(nn.Module):
             rtol=rtol,
             options=solver_options,
         )
-        self.fc = nn.Linear(self.ode_dim, num_classes)
+        # Classifier head applied to the terminal ODE state. Dupont applies a SINGLE
+        # LINEAR map L to phi(x); head_hidden_dim=None (default) matches that. A
+        # non-None head_hidden_dim builds an MLP head -- used ONLY as a diagnostic
+        # contrast to show that a nonlinear head would do the separating work the
+        # flow is supposed to do (see DEVIATIONS.md, head row). It is NOT faithful.
+        if head_hidden_dim is None:
+            self.fc: nn.Module = nn.Linear(self.ode_dim, num_classes)
+        else:
+            self.fc = nn.Sequential(
+                nn.Linear(self.ode_dim, head_hidden_dim),
+                nn.ReLU(),
+                nn.Linear(head_hidden_dim, num_classes),
+            )
 
     def forward(self, x: torch.Tensor, return_trajectory: bool = False) -> torch.Tensor:
         """Forward pass through the ODENet or ANODE.

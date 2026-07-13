@@ -11,6 +11,38 @@ Format: newest first. Each entry: *what changed*, *why*, *scope tag* (`infra` / 
 
 ---
 
+## Phase 1 — A1/A3 re-measurement: the stem/geometry/head factorial (2026-07-13)
+
+### experiment (`report` + `experiment`)
+- Re-ran the A1/A3 question **properly** (the user rejected the earlier 2-seed/accuracy-only
+  claim): `scripts/run_stem_geometry_factorial.py` sweeps {geometry: circles, spheres} ×
+  {stem, no-stem} × {head: linear, mlp-diagnostic}, **≥5 seeds**, logging **fwd/bwd NFE
+  (final + peak), val loss, and divergence** (solver capped at `max_num_steps=1500` so a
+  NODE-failure would show as divergence, not a hang). Committed CSV `results/factorial/`,
+  table via `scripts/print_factorial_table.py`, `make factorial`.
+- **Head audit (done first):** `ODENet.fc` is a **single `nn.Linear`** — already faithful to
+  Dupont; the D8 readout-cheat does not recur. Recorded as `DEVIATIONS.md` A10; ruled out
+  "head does the work" a priori. Added a diagnostic `head_hidden_dim` MLP knob.
+- **`make_spheres`** (Dupont App. F.2.1 filled disk + annulus, 1000:2000) added + unit-tested.
+- **RESULT — no NODE-failure at faithful settings.** All 25 runs converged (0 divergences);
+  the data-space NODE + linear head separates **both** circles and spheres at ~99% at flat NFE
+  (median ~42, peak ≤77 ≪ 1500 cap). Removing the stem *helps*; spheres is not harder; the MLP
+  head needs less NFE (32 vs 42), confirming the head-does-the-work direction. **None of the
+  three deviations reproduces a NODE-failure — there is none at these settings.**
+- **What this does NOT do:** it does not refute Dupont's *comparative* ANODE-vs-NODE claim
+  (lower/flatter NFE, held-out-slice generalization) — that is D1 (with ANODE) and D2
+  (Fig 9, held-out slices), 500-epoch budget, in Stage C. iid-val accuracy is the wrong lens
+  (aligns with plan §9). Full scoping in `DEVIATIONS.md` (finding note under section A).
+
+### correction (`report`)
+- **Retracted** the previous entry's claim that the no-stem NODE showed "NFE explosion" and
+  that **geometry was "the load-bearing factor."** That was an artifact: the earlier 150-epoch
+  run was on the **GPU while another user's 8 GB job was running** (contention → slowness that
+  I misread as solver divergence). On CPU without contention, every cell converges at flat NFE.
+  The "FINDING" bullet in the section below is superseded by the factorial result above.
+
+---
+
 ## Phase 1 — Stage A corrections + Stage B (2026-07-13)
 
 ### model faithfulness (must precede experiments) — see `DEVIATIONS.md`
@@ -19,13 +51,11 @@ Format: newest first. Each entry: *what changed*, *why*, *scope tag* (`infra` / 
   `train_anode_slice_circles`, `solver_ablation` now pass `use_stem=False`. Toy vf width
   `ode_hidden_dim` 64 → **32** (Dupont App. F.1.1). *Why:* the `Linear+Tanh` stem is a
   learned warp the paper's toy setup does not have.
-- **FINDING (stem validation, 30 ep, 2 seeds, thin circles):** removing the stem did **NOT**
-  degrade the NODE — val acc **0.998 (no-stem) vs 0.873 (stem)**, within noise. So the stem
-  is *not* why the coursework NODE reached ~90%. The **dominant factor is the dataset
-  geometry (deviation A3)**: our thin concentric circles are a much weaker topological
-  bottleneck than Dupont's filled-disk-inside-annulus "spheres". Reproducing Dupont's
-  NODE-failure requires the sphere geometry — **A3 elevated to do-early in Stage C.** (Not
-  tuned back; data-space integration is the faithful choice regardless.)
+- **FINDING (stem validation, 30 ep, 2 seeds, thin circles) — [SUPERSEDED / PARTLY RETRACTED;
+  see the factorial re-measurement section above].** The stem-removal-doesn't-hurt observation
+  held up, but the "geometry is the dominant/load-bearing factor" claim was **wrong** (it rested
+  on a GPU-contended run misread as NFE explosion). The proper ≥5-seed factorial shows no
+  NODE-failure on any cell. Data-space integration is kept regardless (it is faithful).
 - **B1 — `ConvODEFunc` now injects time before every conv** (App. F.1.2), independently
   written (`_with_time` helper, state-first concat; not Dupont's `Conv2dTime` subclass). Was:
   a single time concat at the input (a different vector field). Also fixed a latent dtype bug

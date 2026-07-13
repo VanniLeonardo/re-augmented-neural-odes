@@ -8,9 +8,30 @@ import torch
 import torch.nn as nn
 from torchdiffeq import odeint, odeint_adjoint
 
+from data.synthetic import make_spheres
 from models.continuous import ODEFunc
 from models.networks import ODENet, EulerDiscretizedODENet
 from training.utils import set_seed
+
+
+def test_spheres_geometry_matches_dupont() -> None:
+    """Dupont App. F.2.1: filled inner disk ||x||<=0.5 (class 0) enclosed by the
+    annulus 1.0<=||x||<=1.5 (class 1), 1000 inner : 2000 outer."""
+    x, y = make_spheres(3000, noise=0.0, seed=0)
+    r = x.norm(dim=1)
+    assert int((y == 0).sum()) == 1000 and int((y == 1).sum()) == 2000  # 1:2 ratio
+    assert r[y == 0].max().item() <= 0.5 + 1e-5  # inner is a filled disk
+    assert r[y == 1].min().item() >= 1.0 - 1e-5  # outer annulus inner radius
+    assert r[y == 1].max().item() <= 1.5 + 1e-5  # outer annulus outer radius
+
+
+def test_head_hidden_dim_builds_linear_or_mlp() -> None:
+    """Default head is a single Linear (faithful to Dupont); head_hidden_dim -> MLP
+    (diagnostic contrast only)."""
+    linear = ODENet(data_dim=2, hidden_dim=2, num_classes=2, use_stem=False)
+    mlp = ODENet(data_dim=2, hidden_dim=2, num_classes=2, use_stem=False, head_hidden_dim=16)
+    assert isinstance(linear.fc, nn.Linear)
+    assert isinstance(mlp.fc, nn.Sequential)
 
 
 def _count(m: nn.Module) -> int:
