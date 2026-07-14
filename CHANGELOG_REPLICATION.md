@@ -24,11 +24,16 @@ Format: newest first. Each entry: *what changed*, *why*, *scope tag* (`infra` / 
   Dupont; the D8 readout-cheat does not recur. Recorded as `DEVIATIONS.md` A10; ruled out
   "head does the work" a priori. Added a diagnostic `head_hidden_dim` MLP knob.
 - **`make_spheres`** (Dupont App. F.2.1 filled disk + annulus, 1000:2000) added + unit-tested.
-- **RESULT — no NODE-failure at faithful settings.** All 25 runs converged (0 divergences);
-  the data-space NODE + linear head separates **both** circles and spheres at ~99% at flat NFE
-  (median ~42, peak ≤77 ≪ 1500 cap). Removing the stem *helps*; spheres is not harder; the MLP
-  head needs less NFE (32 vs 42), confirming the head-does-the-work direction. **None of the
-  three deviations reproduces a NODE-failure — there is none at these settings.**
+- **RESULT — no NODE-failure at faithful settings, confirmed at the paper's full 500-epoch
+  budget.** All 25 runs converged over all 500 epochs (0 divergences); **NFE stays flat
+  (median ~44–72, peak ≤98 ≪ 1500 cap) — it does not grow/explode with training.** The
+  data-space NODE + linear head separates **both** circles and Dupont's spheres. The stem has
+  no consistent effect (direction flips with budget/seed); spheres is not harder; the MLP head
+  needs less NFE (32 vs ~50), confirming the head-does-the-work direction. **None of the three
+  deviations reproduces a NODE-failure — there is none at these settings.** One nuance:
+  circles/no-stem shows cross-seed *accuracy* variance (0.891±0.208, one bad seed), echoing the
+  coursework's 90.2±8.8 — but that is seed instability, not the NFE/generalization signature.
+  (A 150-epoch pilot gave the same conclusion.)
 - **What this does NOT do:** it does not refute Dupont's *comparative* ANODE-vs-NODE claim
   (lower/flatter NFE, held-out-slice generalization) — that is D1 (with ANODE) and D2
   (Fig 9, held-out slices), 500-epoch budget, in Stage C. iid-val accuracy is the wrong lens
