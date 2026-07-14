@@ -13,7 +13,7 @@ SMOKE_DIR := .smoke
 SEEDS ?= 0,1,2,3,4
 
 .PHONY: help smoke test reproduce-all mnist-baselines table2 table3 anode-figures \
-        solver-ablation fig3 d8 env docker-build docker-smoke clean
+        solver-ablation fig3 d8 factorial budget c2-guard env docker-build docker-smoke clean
 
 help:
 	@echo "Targets:"
@@ -25,6 +25,8 @@ help:
 	@echo "  table3          ANODE missing-slice generalization (Dupont Fig 9) + figures"
 	@echo "  solver-ablation Chen Fig 3 solver/NFE dynamics"
 	@echo "  fig3            Chen Fig 3 tolerance diagnostic (conv ODE-Net)"
+	@echo "  budget          Dupont Fig 6: NODE vs ANODE NFE-growth vs training budget (accurate tol)"
+	@echo "  c2-guard        C2: bwd/fwd NFE ratio across a tolerance axis + reconstruction check"
 	@echo "  anode-figures   Aggregate ANODE CSVs -> figures (no manual step)"
 	@echo "  docker-smoke    Build the CPU image and run 'make smoke' inside it"
 	@echo "  clean           Remove scratch/generated outputs"
@@ -111,6 +113,17 @@ factorial:  # A1/A3: geometry x stem x head, >=5 seeds, 500 ep (paper budget), N
 	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.run_stem_geometry_factorial \
 	  --seeds $(SEEDS) --epochs 500 --max_num_steps 1500 --time_budget_s 360 --with_mlp_head
 	$(PY) -m scripts.print_factorial_table
+
+budget:  # A5/Dupont Fig 6: NODE vs ANODE, budget-dependent NFE growth, ACCURATE tol + recon check
+	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.run_budget_sweep \
+	  --seeds $(SEEDS) --budgets 25,50,100,200,500,1000 --models NODE,ANODE-p1 \
+	  --train_tol 1e-6 --eval_tol 1e-6
+	$(PY) -m scripts.plot_budget_sweep
+
+c2-guard:  # C2: bwd/fwd NFE ratio across a tolerance axis + reconstruction check (guards the headline)
+	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.c2_tolerance_guard --geometry spheres --epochs 100 --seed 0
+	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.c2_tolerance_guard --geometry circles --epochs 100 --seed 0 \
+	  --results_dir results/c2_circles
 
 # --------------------------------------------------------------------------
 # Environment / container.

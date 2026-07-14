@@ -17,65 +17,73 @@ Legend for claim references: D* = Dupont experiments, C* = Chen claims (see `REP
 
 | # | Paper specifies (cite) | We do | Why | Expected effect | Status |
 |---|---|---|---|---|---|
-| A1 | **ODE integrates in data space**: the toy field is an MLP acting on the raw input; the homeomorphism argument (a NODE cannot separate nested regions) requires no learned warp before the flow (Sec 3–4). | **Was:** a `Linear(2,2)+Tanh` downsampling stem before the ODE. **Now:** no stem — ODE integrates the raw 2-D input (`use_stem=False`). | The stem is a diffeomorphism that hands the model a free learned warp before the flow; the faithful setup has none. | **MEASURED (factorial, ≥5 seeds, full 500-epoch budget, NFE-capped 1500):** the stem has **no consistent effect** on the NODE — direction flips with budget/seed (no-stem helped at 150 ep; at 500 ep circles/no-stem 0.891±0.208 < stem 0.983±0.034, from one bad seed), and NFE stays flat (~44–72, peak ≤98) with **0/25 divergences** either way. The stem is not why the coursework NODE did/didn't fail. Code change kept regardless (data-space integration is faithful). | **RESOLVED** (code + measured). |
+| A1 | **ODE integrates in data space**: the toy field is an MLP acting on the raw input; the homeomorphism argument (a NODE cannot separate nested regions) requires no learned warp before the flow (Sec 3–4). | **Was:** a `Linear(2,2)+Tanh` downsampling stem before the ODE. **Now:** no stem — ODE integrates the raw 2-D input (`use_stem=False`). | The stem is a diffeomorphism that hands the model a free learned warp before the flow; the faithful setup has none. | **Code change RESOLVED** (data-space integration is faithful and is what the budget sweep uses). **The earlier factorial verdict ("no consistent effect / NFE flat") is WITHDRAWN**: it was measured at `atol=rtol=1e-3`, which does not integrate these fields (fwd→bwd reconstruction error ≈0.9 — see A4 and the Finding note). Whether the stem changes the *NFE cost* is re-opened and not yet re-measured at an accurate tolerance. | **RESOLVED** (code); **OPEN** (measurement). |
 | A2 | Toy vector-field width **32** (`d+1→32→32→d`, App. F.1.1). | **Was:** `ode_hidden_dim=64`. **Now:** 32. | Coursework widened the field "for capacity"; a wider field lets the NODE better approximate the distorted flow, again flattering the NODE baseline. 32 matches the paper. | Narrower field → NODE slightly less able to fake the tearing → larger NODE-vs-ANODE gap. | **RESOLVED** |
-| A3 | Dataset: **concentric spheres** — filled inner disk `‖x‖≤0.5` + annulus `1.0≤‖x‖≤1.5`; **1000 inner + 2000 outer** (App. F.2.1). | **Was:** two thin **circles** only. **Now:** `make_spheres` added (`data/synthetic.py`, registered as `"spheres"`); `make_circles` kept for the coursework comparison. | The paper specifies this geometry; the coursework used thin circles. | **MEASURED (factorial, 500 ep):** the sphere geometry is **not** harder for the NODE — spheres cells 0.997–0.999 are actually the *most stable* (vs circles/no-stem 0.891±0.208), same flat NFE (~44–50), 0 divergences. So geometry is **not** the load-bearing factor either. (Earlier claim that geometry was load-bearing is **retracted** — see the correction note below the table.) | **RESOLVED** (implemented + measured); geometry is still the *paper-specified* dataset for D1/D2 regardless. |
-| A4 | Solver **RK45 (dopri5), atol = 1e-3**, no rtol stated (App. F). | dopri5 with **atol = rtol = 1e-3**. | Coursework set both tolerances. | Adds a relative-tolerance criterion the paper does not specify; small effect on NFE/accuracy. | **OPEN** — document; optionally loosen rtol so only atol binds. |
-| A5 | **50 epochs**, **20 repeats** (App. F.2.1). | **500 epochs**, **3 seeds** (→ ≥5 in Stage C). | Coursework trained longer / fewer seeds. | Longer training mainly helps the NODE saturate; 3 seeds is statistically thin (this is why report Table 3's slice loss std>mean). | **OPEN** — ≥5 seeds in Stage C; keep or reduce epochs (document). |
-| A6 | Toy **lr = 1e-3** (App. F.2.1). | **lr = 3e-3**. | Coursework tuned up. | Minor; faster convergence. | **OPEN** — document or set 1e-3. |
+| A3 | Dataset: **concentric spheres** — filled inner disk `‖x‖≤0.5` + annulus `1.0≤‖x‖≤1.5`; **1000 inner + 2000 outer** (App. F.2.1). | **Was:** two thin **circles** only. **Now:** `make_spheres` added (`data/synthetic.py`, registered as `"spheres"`); `make_circles` kept for the coursework comparison. Geometry, radii and 1:2 ratio match Dupont exactly. | The paper specifies this geometry; the coursework used thin circles. | **The earlier "geometry not harder" verdict is WITHDRAWN** (loose-tol, accuracy-only reading). At an accurate tolerance the spheres task reproduces Dupont's d=2 result: the NODE approximates the finite sample but via an increasingly **stiff** flow whose **NFE grows during training** (median 219→465 over 25→1000 ep; Fig 6 analog `figures/budget/nfe_vs_epoch.png`). iid accuracy was the wrong lens; the cost (NFE) is the signature. | **RESOLVED** (implemented; measured at accurate tol — see Finding note). |
+| A4 | Solver **RK45 (dopri5)**; torchdiffeq's own defaults are **rtol = 1e-7, atol = 1e-9** (Dupont uses the library defaults). | **Was:** `atol = rtol = 1e-3` (the `ODENet` default). **Faithful experiments now use an accurate tolerance + a reconstruction check.** | 1e-3 is **~4–6 orders looser** than the library default. For the near-singular fields this task induces it is **non-integrating**: fwd→bwd reconstruction error ≈0.9 on data of radius ~1, so accuracy/NFE measured there are artifacts (this is the whole falsification story). | Loose tol *hides* the very NFE-growth Dupont reports and produces a flow that is not being integrated. **Every NFE/accuracy number in the submission must carry a tolerance sweep or a passing reconstruction check** (`tests/test_flow_faithfulness.py`). | **RESOLVED-as-discipline** (tolerance is now a first-class axis; recon check is a permanent test). |
+| A5 | **50 epochs**, **20 repeats** (App. F.2.1). | Budget is now a **swept axis** {25,50,100,200,500,1000} × **5 seeds** (`scripts/run_budget_sweep.py`), so Dupont's 50-epoch point is measured directly rather than fixed. | Makes the budget-dependence explicit instead of a single choice. | At Dupont's 50 ep (accurate tol): NODE dense acc 0.995±0.006 at NFE median ~241; ANODE-p1 0.999±0.001 at NFE ~177 — reproduces "NODE eventually approximates but struggles vs ANODE." 5 seeds < Dupont's 20 (still ≥5 per our standing rule). | **RESOLVED** (budget swept, ≥5 seeds). |
+| A6 | Toy **lr = 1e-3** (App. F.2.1). | **lr = 3e-3** (factorial + budget sweep). | Coursework tuned up. | Minor; faster convergence. Does not change the qualitative NFE-growth / ANODE-gap result. | **OPEN** — document or set 1e-3 (low priority). |
 | A7 | Toy comparison is **ResNet vs NODE vs ANODE** (Fig 5). | **NODE vs ANODE** only; no ResNet on the toy task (our Euler baseline is MNIST-only). | Scope. | Missing one baseline curve; does not affect the NODE-vs-ANODE claim. | **OPEN** — optional. |
 | A8 | Missing-slice removes training points with angle in **`[0, π/13]`** (Fig 9). | Removes a sector of width **`π/5`**. | Coursework chose a wider wedge. | Wider held-out region → harder generalization; the §6 grid varies this on purpose. | **OPEN** — grid sweeps width in Stage C. |
 | A9 | Augmentation appends **p zeros** to the state (Sec 5). | Same — append zeros; **now after data-space state** (was after the stem). | — | Faithful once A1 is applied. | **RESOLVED** |
 | A10 | Classifier is a **single linear map** `L` applied to the terminal ODE state, `g(x)=L(φ(x))` (Sec 2). This linearity is what makes the topological argument bite. | `ODENet.fc = nn.Linear(ode_dim, num_classes)` — a single linear layer; no MLP/nonlinearity between the ODE endpoint and the logits (audited `models/networks.py`). | — | **Already faithful.** Audited because the D8 crossing demo showed a learnable readout can let a NODE cheat; here the head is a single hyperplane, which *cannot* separate topologically-nested classes, so it does **not** do the flow's work. (A diagnostic `head_hidden_dim` MLP head is available to *show* that a nonlinear head would trivialise the task — it is not used in the faithful runs; it is the "mlp" column of the factorial.) | **RESOLVED — already linear** (hypothesis "head does the work" ruled out). |
+| A11 | Toy task is **regression** of `g(x)` to **±1** with MSE; Dupont's loss plots (Fig 5, 7) are MSE (Sec 4.1). | We do **binary classification** (cross-entropy, 2 logits) on the same two regions. | Classification is the coursework framing and makes the topological bound a clean accuracy floor. | Same flow-level mechanism (both need the homeomorphism to break apart the annulus → NFE growth). "Approximate" means *correct side* for us (~0.99) vs *close to ±1* for Dupont; our accuracy is not directly comparable to his MSE curves, but the **NFE-vs-epoch** signature is (Fig 6). | **OPEN** — document; an MSE-regression variant would make the loss curves directly comparable. |
+| A12 | Best d=2 **ANODE augmented dim = 5** (searched {1,2,5}, App. F.2.1). | Budget-sweep control uses **ANODE-p1** (p=1). | p=1 already gives the flat-NFE / higher-accuracy control cleanly. | p=1 suffices to show the ANODE signature (flat NFE ~180, recon 5/5, acc 0.999); p=5 would be even simpler/flatter. Not a threat to the NODE-vs-ANODE contrast. | **OPEN** — optionally add p=5 to match the paper's best. |
 
-### Finding (A1/A3/A10) — and a correction
+### Finding (A1/A3/A10) — corrected twice; this is the falsified, accurate-tolerance version
 
-**Result of the {geometry}×{stem}×{head} factorial (`scripts/run_stem_geometry_factorial.py`,
-`results/factorial/`, ≥5 seeds, dopri5 tol 1e-3, solver capped at 1500 NFE). Run at the paper's
-FULL 500-epoch budget (App. F.2.1) — the earlier 150-epoch pilot gave the same conclusion:**
+**History (kept visible on purpose — the standing rule is not to bury corrections):**
+1. First pass claimed the no-stem NODE showed *"NFE explosion / geometry is load-bearing."*
+2. That was retracted as GPU contention; the replacement claimed *"no NODE-failure at faithful
+   settings; NFE stays flat (~44)."*
+3. **Both were wrong for the same root cause: every factorial number was measured at
+   `atol=rtol=1e-3`, a tolerance that does NOT integrate these fields** (forward→backward
+   reconstruction error ≈0.9 on data of radius ~1; an independent linear probe on the terminal
+   state collapses to chance while the model's own head reads ~1.0). "Flat NFE ~44" was the
+   loose solver never doing the work. Falsification battery: `scratchpad` scripts +
+   `tests/test_flow_faithfulness.py`.
 
-| geometry | stem | head | diverged | val acc | NFE median [IQR] | NFE peak-max |
-|---|---|---|---|---|---|---|
-| circles | no-stem | linear | 0/5 | 0.891 ± 0.208 | 50 [38,50] | 86 |
-| circles | stem | linear | 0/5 | 0.983 ± 0.034 | 72 [38,85] | 98 |
-| spheres | no-stem | linear | 0/5 | 0.997 ± 0.003 | 44 [38,62] | 80 |
-| spheres | stem | linear | 0/5 | 0.999 ± 0.002 | 50 [40,61] | 75 |
-| spheres | no-stem | **mlp** (diagnostic) | 0/5 | 0.999 ± 0.002 | 32 [32,32] | 40 |
+**The result, re-measured at an accurate tolerance (dopri5 1e-6, reconstruction-checked;
+`scripts/run_budget_sweep.py`, `results/budget/`, 5 seeds, budgets 25–1000):**
 
-**None of the three suspected deviations (stem, geometry, head) reproduces a NODE-failure —
-because there is no NODE-failure at these faithful settings, even at the full 500-epoch budget.**
-Every cell converges over all 500 epochs with **0 divergences** and **NFE still flat (median
-~44–72, peak ≤98, far under the 1500 cap) — NFE does NOT grow/explode with training here.** The
-data-space NODE + single linear head separates *both* concentric circles and Dupont's spheres.
-The stem has **no consistent effect** (direction flips with budget/seed: no-stem helped at
-150 ep but at 500 ep circles/no-stem 0.891 < stem 0.983, driven by one bad seed); spheres is not
-harder than circles; the MLP head needs *less* NFE (32 vs ~50), confirming "a nonlinear head does
-the flow's work" (but the linear-head flow is not working hard either). **One real nuance:**
-`circles/no-stem` has high *cross-seed accuracy* variance (0.891 ± 0.208 — one seed did poorly),
-echoing the coursework's 90.2 ± 8.8; but that is seed instability, **not** the
-NFE-cost/generalization signature Dupont's argument is about.
+| budget | model | dense acc | NFE median (mean over seeds) | recon ok |
+|---|---|---|---|---|
+| 50 (Dupont) | NODE | 0.995 ± 0.006 | 241 | 5/5 |
+| 50 (Dupont) | ANODE-p1 | 0.999 ± 0.001 | 177 | 5/5 |
+| 1000 | NODE | 0.992 ± 0.008 | **465** (stiffest seed 812) | **4/5** |
+| 1000 | ANODE-p1 | 0.999 ± 0.001 | **184** (flat) | 5/5 |
 
-**Correction of an earlier claim (retracted):** a previous changelog/DEVIATIONS entry said the
-no-stem NODE showed "NFE explosion" and that geometry was "the load-bearing factor." That was
-**wrong**: the apparent explosion was a **150-epoch GPU run contending with another user's 8 GB
-GPU job** (discovered later), not solver divergence. Re-run on CPU without contention, every
-cell converges at flat NFE. The claim is withdrawn.
+**This is a faithful reproduction of Dupont's d=2 result — there is no contradiction with the
+paper.** Dupont's own words: the NODE *"eventually learns to approximate g(x), but struggles
+compared to ResNets"* (§4.1), because *"the flow could then squeeze through the gaps between
+sampled points"* (§4.1) at the cost that *"as the ODE needs to break apart the annulus, the
+number of function evaluations increases"* (§4.2). We observe exactly this:
+- **NODE approximates the finite sample** (dense acc ~0.99, never 100%) by stretching the inner
+  disk into a thin **tendril that threads a gap in the annulus** — the flow stays a genuine
+  homeomorphism (winding number of φ(annulus-inner-boundary) around φ(inner) = **+1.000**,
+  injective, reconstructs to 1e-5 at accurate tol). It cannot reach 100%: the topological
+  obstruction gives a **computable lower bound of ≥0.70%** misclassified on the annulus inner
+  boundary (observed 1.35%); error is *forced*, not incidental.
+- **NODE NFE grows during training** — median 219→465 over 25→1000 epochs, rising steeply in the
+  first ~20 epochs as the flow breaks apart the annulus, then continuing to climb with a widening
+  cross-seed spread (`figures/budget/nfe_vs_epoch.png` = Dupont Fig 6). The **stiffest seed
+  drives NFE to 812 and pushes past 1e-6 faithfulness (recon fails, 4/5)** — the flow becomes
+  genuinely ill-posed, exactly Dupont's *"numerically expensive to solve."*
+- **ANODE-p1 is the control**: flat NFE (~180, `nfe_vs_epoch` blue), *higher* accuracy, recon 5/5
+  always — the simple lifted flow Dupont predicts.
 
-**What this does and does NOT establish (no overclaim):**
-- It **does** show the simple reading — "a faithful low-dim NODE catastrophically fails / has
-  exploding NFE" — is **not reproduced** here, and that the coursework's NODE numbers
-  (Table 2: 90.2% ± 8.8, NFE median 89.85 / max 307.69) are **not** reproduced by the faithful
-  setup (which gives higher acc, lower NFE) — a candidate *failure-to-reproduce-the-mechanism*.
-- It **does not** refute Dupont's actual claim, which is **comparative** (ANODE vs NODE: lower
-  and flatter NFE, better held-out-slice generalization) and about **NFE growth over long
-  training** + the **held-out-slice** gap — not NODE-only iid accuracy. This factorial ran
-  NODE only, iid-val, 150 epochs. The comparative test is **D1** (with ANODE) and **D2**
-  (Dupont Fig 9, held-out slices), at the paper's budget, in Stage C.
-- **Caveat:** budget was 150 epochs vs the report's 500; whether NODE NFE grows at longer
-  budgets is untested here (no sign of it at 150).
-- **Methodological implication (aligns with plan §9):** iid-val accuracy on these datasets does
-  not expose a NODE bottleneck; it is the wrong lens. D1/D2 must lead with NFE and held-out
-  generalization, not iid accuracy.
+**Item 9 settled (GPU-contention retraction re-examined):** the NFE growth is **real
+field-stiffening**, plainly visible at accurate tolerance (Fig 6). The earlier "150-epoch
+explosion vs contention" debate was ill-posed because at the loose 1e-3 the coursework used, NFE
+does *not* grow at all — the growth only appears once the solver is actually integrating. So: the
+growth is real; it was invisible at 1e-3; neither prior framing (loose-tol "flat" nor
+contention "explosion") described the true accurate-tolerance behaviour.
+
+**Falsification check attached (standing rule):** the accurate-tolerance claim is only valid where
+the solver integrates — every budget-sweep row carries a fwd→bwd reconstruction error and a
+`recon_ok` flag; the one regime where it fails (stiffest NODE seed at ≥200 ep) is reported as a
+failure, not hidden. The homeomorphism claim is checked by winding number + injectivity, not
+asserted.
 
 ## B. Dupont ANODE — images (D3 MNIST; D4 CIFAR gated)
 
@@ -89,7 +97,7 @@ cell converges at flat NFE. The claim is withdrawn.
 | # | Paper specifies | We do | Why | Expected effect | Status |
 |---|---|---|---|---|---|
 | C1 | Table 1 MNIST uses **implicit Adams (scipy)**; classification tolerance **1e-3** (Sec 3, p.8). | **dopri5** (torchdiffeq adjoint), tol 1e-3. | Modern, GPU-friendly solver; nobody reruns the scipy/TF/autograd stack. | Different solver → different NFE dynamics; **this is the basis of the C2 finding**, not an accident. | **INTENDED** (documented). |
-| C2 | **Backward NFE ≈ ½ forward NFE** (Fig 3c). | We observe **backward ≈ forward** with `odeint_adjoint`. | Our adjoint solves the augmented reverse system (state + adjoint + parameter sensitivities) jointly. | This is the **promoted headline** — a genuine implementation-level divergence. Gated behind a proven-correct NFE-split test (Stage B) and a torchdiffeq-version sweep (Stage C). | **INTENDED / FINDING** |
+| C2 | **Backward NFE ≈ ½ forward NFE** (Fig 3c). | **Headline WITHDRAWN.** The previous claim "backward ≈ forward (ratio ≈1)" does not survive a tolerance guard. | Our adjoint solves the augmented reverse system (state + adjoint + parameter sensitivities), which is *stiffer and higher-dimensional* than the forward. | Guard (`scripts/c2_tolerance_guard.py`, `results/c2/`): in the **integrating** regime (recon-checked) the adaptive dopri5 ratio is **bwd/fwd ≈ 25→115× as tol tightens 1e-5→1e-8** (same on circles and spheres) — **neither Chen's 0.5 nor our claimed ≈1**, and strongly tolerance- **and** training-dependent (a random field is cheap; a trained separating field is not). The only regime where bwd==fwd is **fixed-step** (same grid backward, by construction — the `tests/test_nfe_split.py` invariant, which stands). So C2 cannot be a single headline number; it needs per-setup characterisation with a recon check. | **WITHDRAWN as headline; OPEN** — recharacterise across tolerance (never near an abstract as a single ratio). |
 | C3 | ODE-Net memory is **O(1) in effective depth (NFE)** via the adjoint (Table 1 Memory col). | Report Table 7 varies the **Euler-baseline depth L**, not the ODE-Net's NFE; ODE-Net is a single point. | Coursework tested the wrong axis. | Does not actually test O(1); C4 rebuilds it (fix ODE-Net, drive its NFE up, show flat peak memory vs `odeint` rising). | **OPEN** — Stage C C4. |
 | C4 | Chen's ODE-Net: conv, downsample-twice + ODESolve(6 blocks), **~0.22M params, 0.42% error, ~100+ epochs**. | Our MNIST rows: MLP 204,650 / a conv baseline; 10 epochs. | We are **not** reproducing Chen's Table 1 (decision D2). | Our MNIST rows are **our own seeded baselines**, explicitly not a Chen Table-1 claim. | **RESOLVED-by-relabel** |
 

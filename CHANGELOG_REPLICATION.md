@@ -11,7 +11,56 @@ Format: newest first. Each entry: *what changed*, *why*, *scope tag* (`infra` / 
 
 ---
 
-## Phase 1 — A1/A3 re-measurement: the stem/geometry/head factorial (2026-07-13)
+## Phase 1 — FALSIFICATION: the factorial's "flat NFE / no NODE-failure" was a loose-tolerance artifact; accurate-tolerance budget sweep reproduces Dupont (2026-07-14)
+
+### experiment + report (supersedes the 2026-07-13 conclusion below)
+A theorem-first falsification battery (prompted by review: a 2-D flow is a homeomorphism and
+*cannot* linearly separate a disk enclosed by an annulus) showed the factorial's headline was a
+measurement defect, **not** a code bug and **not** a theorem violation:
+- **Root cause:** the factorial measured everything at `atol=rtol=1e-3` — **non-integrating** for
+  these near-singular fields. Forward→backward reconstruction error ≈0.9 (data radius ~1); an
+  independent linear probe on the terminal state collapses to chance while the model's own head
+  reads ~1.0. "Flat NFE ~44" was the loose solver never doing the work. (`scratchpad/` battery:
+  `falsify_spheres.py`, `tolerance_sweep.py`, `invertibility_sweep.py`, `winding_test.py`,
+  `theorem_bound.py`.)
+- **Mechanism (verified, not asserted):** at accurate tolerance the flow is a genuine
+  homeomorphism (winding of φ(annulus inner boundary) around φ(inner) = **+1.000**, injective,
+  reconstructs to 1e-5) that separates the *finite* sample by stretching the inner disk into a
+  thin **tendril threading a gap in the annulus** — exactly Dupont §4.1 (*"squeeze through the
+  gaps between sampled points"*). It cannot reach 100%: the topological lower bound is **≥0.70%**
+  misclassified on the annulus inner boundary (observed 1.35%); the 1.35%-of-B vs 0.27%-total
+  numbers reconcile via the per-radius error profile × 2:1 imbalance.
+- **Accurate-tolerance budget sweep** (`scripts/run_budget_sweep.py`, `results/budget/`, dopri5
+  1e-6 + recon check, 5 seeds, budgets 25–1000; `figures/budget/`): **reproduces Dupont's d=2
+  result.** NODE **NFE grows 219→465** (median; stiffest seed 812, and past 200 ep that seed
+  fails 1e-6 recon → 4/5) while approximating at ~0.99; **ANODE-p1 flat NFE ~180, acc 0.999,
+  recon 5/5.** `figures/budget/nfe_vs_epoch.png` = Dupont Fig 6. At Dupont's 50-epoch budget:
+  NODE 0.995 @ NFE 241, ANODE 0.999 @ NFE 177. **No contradiction with the paper** — the earlier
+  "no NODE-failure" framing was measuring the wrong thing at the wrong tolerance.
+- **Item 9 settled:** NFE growth is **real field-stiffening** (Fig 6), not GPU contention; at the
+  loose 1e-3 it does not grow at all, which is why the earlier "explosion vs contention" debate
+  was ill-posed.
+- **C2 headline WITHDRAWN:** tolerance guard (`scripts/c2_tolerance_guard.py`, `results/c2/`)
+  shows the adaptive bwd/fwd ratio is **25→115×** as tol tightens 1e-5→1e-8 (both circles and
+  spheres), tolerance- and training-dependent — neither Chen's 0.5 nor the claimed ≈1. Only the
+  **fixed-step** invariant (bwd==fwd==4N, `tests/test_nfe_split.py`) stands. C2 is not a single
+  headline number.
+
+### infra
+- **Tolerance is now a first-class axis.** `tests/test_flow_faithfulness.py` pins that the loose
+  1e-3 default does **not** integrate the stiff field while an accurate tolerance does — every
+  NFE/accuracy number in the submission must carry a tolerance sweep or a passing reconstruction
+  check. New scripts: `run_budget_sweep.py`, `plot_budget_sweep.py`, `c2_tolerance_guard.py`.
+- `DEVIATIONS.md` A1/A3/A4/A5/A6 verdicts corrected; A11 (regression-vs-classification), A12
+  (ANODE p=1 vs Dupont's p=5) added; C2 row withdrawn; the section-A Finding note rewritten with
+  the full correction history kept visible (not buried).
+
+---
+
+## Phase 1 — A1/A3 re-measurement: the stem/geometry/head factorial (2026-07-13) — SUPERSEDED
+
+> **SUPERSEDED 2026-07-14 (see entry above).** The conclusion below ("no NODE-failure / NFE
+> flat") was measured at the non-integrating tolerance 1e-3 and is retracted. Kept for the record.
 
 ### experiment (`report` + `experiment`)
 - Re-ran the A1/A3 question **properly** (the user rejected the earlier 2-seed/accuracy-only
