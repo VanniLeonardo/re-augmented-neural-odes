@@ -10,6 +10,24 @@ def flatten_tensor(x: torch.Tensor) -> torch.Tensor:
     return x.view(-1)
 
 
+def get_cifar10_dataloaders(
+    batch_size: int,
+    data_root: str = "./data",
+    seed: Optional[int] = None,
+) -> Tuple[DataLoader, DataLoader]:
+    """Train/test DataLoaders for CIFAR-10 (D4). ToTensor only (per-image [0,1]); no
+    augmentation, to keep the (A)NODE comparison about the flow, not data augmentation.
+    Seeded train shuffle for reproducibility (like the MNIST loader)."""
+    transform = transforms.Compose([transforms.ToTensor()])
+    train_dataset = datasets.CIFAR10(root=data_root, train=True, download=True, transform=transform)
+    test_dataset = datasets.CIFAR10(root=data_root, train=False, download=True, transform=transform)
+    generator = torch.Generator().manual_seed(seed) if seed is not None else None
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
+                              num_workers=0, generator=generator)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
+    return train_loader, test_loader
+
+
 def get_mnist_dataloaders(
     batch_size: int,
     data_root: str = "./data",
