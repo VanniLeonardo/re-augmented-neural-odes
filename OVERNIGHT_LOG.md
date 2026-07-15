@@ -164,6 +164,33 @@ scratchpad/d2_old. Relaunched (b4x3m87mt) **spheres-first** (Dupont's actual dat
 (the gap was clearly present at 200 ep on circles s0 — slice_loss 1.25 vs train 0.26 — and the
 flow contorts progressively, so 150 should still show it), 5 seeds, NODE + ANODE-p1. This is a
 scope/runtime trim, NOT a conclusion change; recorded here. Circles runs after spheres if time.
+
+## 04:40 — D2 FINAL trim (bde0166p3): spheres-only, 100 ep, 5 seeds
+The 150-ep/both-geom relaunch was still ~30 min/run under 3-way contention (would need ~5 h for
+spheres alone). Final decision: **spheres-only** (Dupont's faithful data, where the gap is
+dramatic — NODE s0 150 ep gave slice-acc 0.613 / gap +8.64 vs circles' modest 0.87/+1.0),
+**100 epochs** (the gap is huge by 150, robust by 100), 5 seeds, NODE + ANODE-p1. Dropped
+circles-D2 (secondary; the earlier partial + the circles budget sweep cover circles). Partial
+150-ep spheres saved to scratchpad/d2_old. Two intervening restarts logged — trims to fit the
+night, no conclusion changed. STOP triggers (S3) unchanged.
+
+## 04:55 — D1 RESULT (spheres 5 seeds committed + circles; `scripts/d1_report.py`)
+RAW (median over seeds, accurate tol 1e-6, recon-checked):
+| | @50 dense_acc | @50 NFE | NFE growth 25→500 |
+|---|---|---|---|
+| spheres NODE | 0.996 | 218 | **×1.74** |
+| spheres ANODE-p1 | 0.9996 | 170 | ×1.04 (flat) |
+| circles NODE | 0.998 | 170 | **×1.37** |
+| circles ANODE-p1 | 0.9996 | 128 | ×1.12 (flat) |
+- **All pre-declared checks pass, NONE refuted, on BOTH geometries (R3):** R1 ANODE cheaper
+  (ANODE NFE < NODE NFE); R2 NODE NFE grows ≥+30% while ANODE stays <+30% flat; R4 ANODE acc ≥
+  NODE acc. **S1 STOP not triggered:** min NODE dense-acc ≥0.925 (≫0.70) — the NODE "eventually
+  approximates" at d=2, matching Dupont §4.1; no accuracy-collapse, no paper contradiction.
+- Honest caveats carried in the CSV: spheres NODE recon_ok 4/5 at budget ≥200 (stiffest seed
+  exceeds 1e-6 faithfulness — same finding as the pre-overnight budget sweep); one circles NODE
+  seed hit the wall-clock cap at budget 500 (status=time_capped, recorded not dropped).
+- Circles ANODE was mid-flight when this was computed (3–5 seeds/budget); values are already
+  tight (0.9996–0.9999, NFE 128–143) so the conclusion is stable. Final commit uses full data.
 - Early MNIST signal (not yet a conclusion): fwd NFE 25.3→26.2→35.5 over epochs 1-3 (recon OK) —
   Chen's growth is appearing; will confirm at 10 ep × 5 seeds.
 
