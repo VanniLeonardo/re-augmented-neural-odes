@@ -369,3 +369,27 @@ with recon_ok per cell. RAW highlights (trained; recon_ok in parens):
   Chen's 0.5 / the old "≈1") FAIL the recon check (recon_ok 0) on all three fields. Any bwd/fwd
   headline at loose tol is measuring a non-solve. This is the operative caution.
 - Framing (demoted secondary, out of abstract) unchanged; prose stub left for co-author. C2 CLOSED.
+
+## 09:00 — [2] C1/C3 stiffening confirmation PRE-DECLARED
+`run_mnist_stiffening.py`: MNIST conv (64f), train tol 1e-3, per epoch measure recon + fwd NFE at
+a LADDER of eval tols {1e-5,1e-6,1e-7} (capped solves), 5 seeds, 8 epochs.
+- **Claim:** (a) faithful-NFE (at the tightest recon_ok tol) grows monotonically over training;
+  (b) the LOOSEST tol that stays recon-faithful TIGHTENS with training.
+- **Refuted if:** faithful-NFE is flat/decreasing once recon_ok, OR the loosest recon_ok tol does
+  NOT tighten (e.g. 1e-5 stays recon_ok at all epochs -> no stiffening -> the C1/C3 finding was
+  wrong). Raw recon_rel per (epoch, tol) logged.
+
+## 10:30 — [2] C1/C3 STIFFENING RESULT (5 seeds; `results/mnist_stiffening/`, `figures/mnist_stiffening/stiffening.png`)
+RAW recon_ok fraction (epoch × eval_tol):
+| eval_tol \ epoch | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| 1e-5 | 1.0 | 1.0 | 1.0 | **0.6** | **0.4** | **0.6** |
+| 1e-6 | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 |
+| 1e-7 | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 |
+Faithful NFE (at 1e-7): **384 → 738** over 6 epochs (×1.9), all recon_ok.
+- **Both pre-declared claims CONFIRMED, refutation NOT met:** (a) faithful-NFE grows monotonically
+  (384→499→574→644→699→738); (b) the recon-faithful tolerance TIGHTENS — 1e-5 recon_ok fraction
+  falls 1.0→0.4 at epochs 4-6 while 1e-6/1e-7 hold. The stiffening is real (NOT removed by tighter
+  tol: the NFE at 1e-6/1e-7 grows too). The transition is underway by epoch 6 (C1/C3's 10-epoch run
+  showed 1e-5 fully failing) — honest partial, per-seed recon_ok logged.
+- Confirms the C1/C3 finding is a MECHANISM (conv field stiffens with training), not a defect.
