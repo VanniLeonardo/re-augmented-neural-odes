@@ -191,6 +191,28 @@ RAW (median over seeds, accurate tol 1e-6, recon-checked):
   seed hit the wall-clock cap at budget 500 (status=time_capped, recorded not dropped).
 - Circles ANODE was mid-flight when this was computed (3–5 seeds/budget); values are already
   tight (0.9996–0.9999, NFE 128–143) so the conclusion is stable. Final commit uses full data.
+- D1 committed ff98e8e (full 5 seeds both geometries).
+
+## 05:15 — D2 RESULT (spheres, 100 ep, 5 seeds; `results/slice_spheres/`, `figures/slice/`)
+RAW (median[IQR], recon_ok 5/5 for BOTH models — all faithful):
+| model | train_loss | SLICE acc | SLICE loss | full_val_acc |
+|---|---|---|---|---|
+| NODE | 0.000 | **0.619** [0.613, 0.921] | **6.089** [0.41, 7.50] | 0.963 |
+| ANODE-p1 | 0.000 | **1.000** [1.000,1.000] | **0.000** | 1.000 |
+- **Textbook Dupont §5.1 / Fig 9 reproduction.** NODE fits training perfectly yet collapses to
+  ~chance (0.619) on the held-out wedge — the flow threads the inner class OUT through the removed
+  wedge (a real 2-D hole in the training support), so held-out points there are misclassified.
+  ANODE lifts the inner class into the augmented dim and generalises perfectly (slice-acc 1.000).
+- **Pre-declared checks:** R-D2a (NODE gap) NOT refuted (slice_loss 6.09 ≫ train 0.00). R-D2b
+  (ANODE better) NOT refuted (ANODE slice_loss 0.00 < NODE 6.09; ANODE slice_acc 1.00 > NODE
+  0.62). **S3 STOP not triggered** (ANODE not worse). No paper contradiction — this is the
+  direction Dupont predicts.
+- Honest nuance: NODE slice-acc IQR [0.613, 0.921] — most seeds ≈ chance, one seed 0.921 (high
+  cross-seed variance); median 0.619. ANODE is rock-solid 1.000 all seeds.
+- geometry note: spheres shows a FAR larger gap than circles (circles NODE s0 earlier: slice-acc
+  0.87 / gap +1.0). Thin circles lack a held-out 2-D *area*; the filled-sphere geometry is where
+  Dupont's gap is dramatic. Circles-D2 dropped for time (secondary; partial in scratchpad/d2_old).
+- FLAG (unchanged): `DEVIATIONS.md` A8 says Dupont's wedge is π/13; paper text says [0,π/5]. Used π/5.
 - Early MNIST signal (not yet a conclusion): fwd NFE 25.3→26.2→35.5 over epochs 1-3 (recon OK) —
   Chen's growth is appearing; will confirm at 10 ep × 5 seeds.
 
