@@ -311,3 +311,61 @@ report doesn't use it either. So A8's "[0, π/13] / wider wedge" was a sourceles
 - Also captured for D3/D6 from p.6 §5.2: *"to compute a function which obtains a loss of 0.8 on
   CIFAR10, a NODE requires approximately 100 function evaluations whereas ANODEs only require 50"*
   and *"On MNIST... ANODEs... achieve the same loss in roughly 10 times fewer iterations."*
+
+## 07:45 — [1] C2 consolidation PRE-DECLARED (framing DECIDED by co-author: demoted secondary, out of abstract)
+Goal: ONE committed artifact = bwd/fwd NFE ratio as a **tolerance × field** surface across
+{toy spheres, toy circles, MNIST conv} × {untrained, trained} with recon_ok per cell. I add
+MNIST (new measurement) to the committed toy data (`c2_recharacterise.csv`).
+- **Through-line claim (to characterise, not headline):** the adaptive backward/forward NFE
+  ratio is governed by *the tolerance a field needs to be faithfully integrated*. Smooth fields
+  (MNIST conv) integrate at loose tol → small ratio; near-singular fields (toy tear) need tight
+  tol → large ratio. So it is tolerance-driven, not per-field magic.
+- **Pre-declared refutation:** at MATCHED tolerance, MNIST and toy bwd/fwd ratios are the same
+  order of magnitude (ratio ≈ f(tolerance), not f(field)). REFUTED if, at a matched recon_ok
+  tolerance, MNIST ratio and toy ratio differ by >5×. (Also: if MNIST needs the SAME tight tol as
+  the toy to integrate, the "smooth field integrates loose" half is wrong — that too is data.)
+- Raw per-(field,state,tol) rows logged; recon_ok per cell; no bare verdict. Prose framing left
+  as a stub for the co-author (I write the surface + result, not paper narrative).
+
+## 08:30 — [3] D3 (ANODE vs NODE, MNIST, matched params) PRE-DECLARED + COMPUTE FLAG
+Model faithful to App F.1.2 (conv field 1x1 k -> 3x3 k -> 1x1 c, time channel before each conv =
+our ConvODEFunc) + Dupont image augmentation (add p zero channels to the input image, no
+Chen-style downsampling) + flatten->linear head. **Param counts asserted & matched:** NODE k=92
+= 85,316; ANODE-p5 (aug5, k=64) = 85,462 (146 apart, 0.17%); ~1% above Dupont's 84,395/84,816 (a
+head/padding detail — documented deviation, not tuned). Pre-check: the D3 image field integrates
+faithfully at eval-tol 1e-5 (recon 3.8e-4 at 2 ep) — unlike the C1/C3 64-channel field; per-row
+recon_ok will confirm as it trains.
+- **Pre-declared refutation (Dupont's core Table-1 claim):** ANODE reaches ≥ NODE test accuracy at
+  matched params WITH lower/flatter forward NFE. REFUTED if ANODE test-acc < NODE test-acc
+  (median, 5 seeds), OR ANODE forward NFE ≥ NODE forward NFE (not cheaper).
+- Report raw vs Dupont Table 1 (**MNIST NODE 96.4±0.5 / ANODE 98.2±0.1**). A MISS is a legitimate
+  partial-replication finding — will NOT tune toward the paper's numbers. D6 (NFE-vs-loss) and D7
+  (train/test gap vs NFE) fall out of the same trajectory.
+- **COMPUTE FLAG (per ceiling rule):** est. ~3 GPU-h for 5 seeds × 2 models × 8 epochs, batch 256
+  (NODE ~2.8 min/ep, ANODE ~1.7). At/around the ~3-GPU-h single-run soft limit; total budget has
+  room (~2 GPU-h used so far). Proceeding at 8 epochs (fewer than a fully-converged budget — so a
+  shortfall vs Table-1 absolute numbers is expected and is a documented deviation, not a failure
+  of the comparison). Incremental CSV → partial survives. Not CIFAR; stopping at the CIFAR gate.
+
+## 08:45 — [1] C2 CONSOLIDATION RESULT (`results/c2/c2_surface.csv`, `figures/c2/c2_surface.png`)
+Surface = bwd/fwd ratio (median) over {spheres, circles, mnist_conv} × {untrained, trained} × tol,
+with recon_ok per cell. RAW highlights (trained; recon_ok in parens):
+| tol | spheres | circles | mnist_conv |
+|---|---|---|---|
+| 1e-3 | 6.1 (0.0) | 6.3 (0.0) | 10.9 (0.0) |
+| 1e-4 | 14.1 (0.2) | 12.0 (0.2) | 30.5 (0.0) |
+| 1e-5 | 32.6 (1.0) | 29.4 (1.0) | 104.8 (1.0) |
+| 1e-6 | 60.7 (1.0) | 59.0 (1.0) | — |
+| 1e-7 | 93.7 (1.0) | 96.6 (1.0) | — |
+- **Through-line CONFIRMED (tolerance-driven):** ratio grows steeply & monotonically with tighter
+  tol on ALL three fields; present even untrained. The adjoint's reverse *augmented* system is
+  inherently stiffer/higher-dim than the forward.
+- **Pre-declared "same order across fields (<5×)" = PARTIAL PASS (honest):** at 1e-5 (all
+  recon_ok) *trained* toy ~30–33 vs MNIST 105 = **~3×** (within band, not refuted); *untrained*
+  toy 10.7 vs MNIST 65 = **~6×** (over band, refuted). ⇒ the ratio is tolerance-driven AND
+  field-stiffness-dependent (conv field intrinsically stiffer). NOT purely f(tolerance). Reported
+  as-is, not massaged.
+- **Small-ratio regime = non-integrating:** for trained fields, 1e-3/1e-4 (ratios ~6–30, nearest
+  Chen's 0.5 / the old "≈1") FAIL the recon check (recon_ok 0) on all three fields. Any bwd/fwd
+  headline at loose tol is measuring a non-solve. This is the operative caution.
+- Framing (demoted secondary, out of abstract) unchanged; prose stub left for co-author. C2 CLOSED.
