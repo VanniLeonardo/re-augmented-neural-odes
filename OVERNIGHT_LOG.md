@@ -229,6 +229,30 @@ RAW (mean seeds {0,1} by epoch): train-tol(1e-3) NFE **26.1→38.0** (peak ep3) 
   ~1e-6/1e-7. NOT re-running tonight (compute/time); reporting with the recon_ok flag visible.
 - Decision: let the 5-seed run finish; commit with the caveat + per-epoch recon_ok. This is a
   bounded, honest partial (NFE-growth shown in the recon_ok regime), NOT a clean full-budget claim.
+
+## 06:40 — C1/C3 MNIST FINAL (5 seeds; `results/mnist_nfe/`, `figures/mnist_nfe/nfe_over_training.png`)
+RAW (mean over 5 seeds, by epoch): train-tol(1e-3) NFE / faithful-tol(1e-5) NFE / recon_ok:
+| epoch | 1 | 2 | 3 | 4 | 5 | ... | 10 |
+|---|---|---|---|---|---|---|---|
+| train NFE | 25.4 | 29.0 | 36.8 | 36.8 | 35.9 | | 37.2 |
+| faithful NFE | 78.8 | 92.0 | 101.6 | 106.4 | 108.8 | | 120.8 |
+| recon_ok (5 seeds) | 1.0 | 1.0 | **1.0** | 0.6 | 0.2 | | 0.0 |
+- **Pre-declared refutation (NFE flat/decreasing) NOT met** — NFE grows: train 25→37, faithful
+  79→121. **Chen's NFE-growth direction reproduced.**
+- **Fully-faithful window = epochs 1–3 (recon_ok 5/5):** train 25.4→36.8, faithful 78.8→101.6.
+  Past epoch 3 the conv field stiffens beyond 1e-5 (recon_ok falls to 0), so later-epoch NFE is
+  edge-of-faithful — the growth continues but the numbers are at ~1% integration error. Same
+  tolerance-faithfulness phenomenon as the toy tear, slower onset. Transparent via recon_ok/row.
+- **This is NOT a clean full-budget C1/C3 claim.** For a faithful 10-epoch curve, re-run at
+  eval_tol 1e-6/1e-7 (left for awake decision — it multiplies the recon-check cost). Committing
+  the 5-seed run with the caveat and per-row recon_ok, not hiding the faithfulness limit.
+
+## END OF AUTONOMOUS SESSION
+Delivered: D1, D2, C4 fully (≥5 seeds, committed, gated-green); C2 recharacterised (framing left
+open); C1/C3 MNIST NFE-growth reproduced with a stated faithfulness caveat. No STOP triggered; no
+prior conclusion inverted; one self-caught imprecision corrected (C2 "toy-specific"→tolerance-
+driven). Stage D / CIFAR / paper untouched. Flags for review: C2 framing; DEVIATIONS A8 π/13 vs
+paper [0,π/5]; MNIST faithfulness (re-run tighter?); spheres NODE recon 4/5 at budget≥200.
 - Early MNIST signal (not yet a conclusion): fwd NFE 25.3→26.2→35.5 over epochs 1-3 (recon OK) —
   Chen's growth is appearing; will confirm at 10 ep × 5 seeds.
 
