@@ -247,7 +247,7 @@ RAW (mean over 5 seeds, by epoch): train-tol(1e-3) NFE / faithful-tol(1e-5) NFE 
   eval_tol 1e-6/1e-7 (left for awake decision — it multiplies the recon-check cost). Committing
   the 5-seed run with the caveat and per-row recon_ok, not hiding the faithfulness limit.
 
-## END OF AUTONOMOUS SESSION
+## END OF AUTONOMOUS SESSION (part 1)
 Delivered: D1, D2, C4 fully (≥5 seeds, committed, gated-green); C2 recharacterised (framing left
 open); C1/C3 MNIST NFE-growth reproduced with a stated faithfulness caveat. No STOP triggered; no
 prior conclusion inverted; one self-caught imprecision corrected (C2 "toy-specific"→tolerance-
@@ -285,3 +285,29 @@ Untrained control (seed 0): ratio 3.6→59 (spheres), 4.0→69 (circles) across 
   characterisation: C2 is real and interesting but is a *tolerance×field* surface, not a single
   ratio; it should not be an abstract headline as a number.
 - Committing as a complete experiment.
+
+---
+
+# Overnight session — part 2 (continue: finish Dupont + Chen)
+
+Order: 0 blocker (D2 wedge) → 1 C2 consolidation → 2 C1/C3 tighter-tol → 3 D3 ANODE-MNIST →
+STOP at CIFAR gate. Same discipline: pre-declared refutations, raw observation decides,
+STOP-and-flag on any theorem/paper contradiction.
+
+## 07:30 — [0] BLOCKER RESOLVED: D2 wedge = [0, π/5], MATCHES paper (no re-run)
+Rendered `references/1904.01681v3.pdf` p.6 to an image and read it directly (pdftotext mangles
+the fraction). **§5.1, p.6 verbatim:** *"we can also create a validation set by removing random
+slices of the input space (e.g. removing all points whose angle is in [0, π/5]) from the training
+set... there is a large generalization gap for NODEs... ANODEs generalize much better and achieve
+near zero validation loss."* Grepped the whole paper: **π/13 appears nowhere**; the coursework
+report doesn't use it either. So A8's "[0, π/13] / wider wedge" was a sourceless misread.
+- **Our committed D2 ran at π/5 → MATCHES the paper. No re-run needed.** A8 corrected (with the
+  p.6 citation and a dated correction note; factual fix authorised by the continue-prompt item 0,
+  done transparently not silently).
+- Same page cross-confirms our other results: Fig 8-right = NODE NFE rising ~18→37 / ANODE flat
+  (our D1); Fig 9-left = the NODE tendril threading the annulus (our topology finding); Fig 9
+  mid/right = NODE train/val gap vs ANODE overlap (our D2). Note Dupont's Fig 9 loss plots run
+  ~20 epochs; our D2 used 100 (longer; same direction, larger gap) — minor deviation, logged.
+- Also captured for D3/D6 from p.6 §5.2: *"to compute a function which obtains a loss of 0.8 on
+  CIFAR10, a NODE requires approximately 100 function evaluations whereas ANODEs only require 50"*
+  and *"On MNIST... ANODEs... achieve the same loss in roughly 10 times fewer iterations."*
