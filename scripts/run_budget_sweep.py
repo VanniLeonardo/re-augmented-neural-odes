@@ -37,14 +37,18 @@ import torch
 import torch.nn as nn
 from torchdiffeq import odeint
 
-from data.synthetic import make_spheres
+from data.synthetic import make_spheres, make_circles
 from data.dataloaders import get_dataloaders
 from models.networks import ODENet
 from training.engine import train_epoch
 from training.utils import set_seed
 
 DEVICE = torch.device("cpu")
-N, NOISE, LR = 1200, 0.05, 3e-3
+NOISE, LR = 0.05, 3e-3
+# geometry -> (n_samples, generator). Both are topologically nested (inner enclosed by outer),
+# so both carry the same obstruction; spheres = Dupont's filled disk + annulus, circles = two
+# thin concentric circles (coursework). n_samples matches each source.
+_GEOM = {"spheres": (1200, make_spheres), "circles": (1000, make_circles)}
 
 
 def _append(path: Path, row: Dict[str, Any]) -> None:
@@ -122,28 +126,36 @@ def val_metrics(model: ODENet, loader, crit) -> Dict[str, float]:
 
 def run(model_name: str, augment_dim: int, seed: int, budgets: List[int], cfg) -> None:
     set_seed(seed)
-    tr, va = get_dataloaders("spheres", n_samples=N, batch_size=64,
+    n_samples, gen = _GEOM[cfg.geometry]
+    tr, va = get_dataloaders(cfg.geometry, n_samples=n_samples, batch_size=64,
                              val_split=0.2, noise=NOISE, seed=seed)
     model = make_model(augment_dim, cfg.train_tol)
     opt = torch.optim.Adam(model.parameters(), lr=LR)
     crit = nn.CrossEntropyLoss()
 
     # fixed fresh test set for continuum accuracy + NFE distribution (same for all snapshots)
-    Xtest, Ytest = make_spheres(n_samples=12_000, noise=NOISE, seed=100_000 + seed)
-    Xnfe, _ = make_spheres(n_samples=3_000, noise=NOISE, seed=200_000 + seed)
+    Xtest, Ytest = gen(n_samples=12_000, noise=NOISE, seed=100_000 + seed)
+    Xnfe, _ = gen(n_samples=3_000, noise=NOISE, seed=200_000 + seed)
 
     traj = Path(cfg.results_dir) / "budget_trajectory.csv"
     raw = Path(cfg.results_dir) / "budget_raw.csv"
 
-    done = 0
+    done = 0          # epochs actually trained so far
+    capped = False
     t0 = time.perf_counter()
     for budget in budgets:
-        for ep in range(done, budget):
+        while done < budget:
+            # per-(model,seed) wall-clock cap: a pathologically-stiff seed must not eat the
+            # night. If capped, we still record every budget row (status=time_capped) so the
+            # cap itself is DATA ("this seed is too stiff to integrate in budget"), not a gap.
+            if time.perf_counter() - t0 > cfg.time_budget_s:
+                capped = True
+                break
             m = train_epoch(model, tr, opt, crit, DEVICE)
-            _append(traj, {"model": model_name, "seed": seed, "epoch": ep + 1,
+            done += 1
+            _append(traj, {"model": model_name, "seed": seed, "epoch": done,
                            "train_acc": m["accuracy"],
                            "train_fwd_nfe": m.get("forward_nfe_mean", float("nan"))})
-        done = budget
 
         Xval = torch.stack([va.dataset[i][0] for i in range(len(va.dataset))])
         vm = val_metrics(model, va, crit)
@@ -151,27 +163,32 @@ def run(model_name: str, augment_dim: int, seed: int, budgets: List[int], cfg) -
         rc = recon_error(model, Xval, cfg.eval_tol)
         dense = accurate_acc(model, Xtest, Ytest)
         row = {
-            "model": model_name, "augment_dim": augment_dim, "seed": seed, "budget": budget,
+            "model": model_name, "augment_dim": augment_dim, "seed": seed,
+            "geometry": cfg.geometry, "budget": budget, "epochs_done": done,
+            "status": "time_capped" if capped else "ok",
             "train_tol": cfg.train_tol, "eval_tol": cfg.eval_tol,
             **vm, "dense_acc": dense, **nd, **rc,
             "recon_ok": int(rc["recon_max"] < cfg.recon_thresh),
             "elapsed_s": round(time.perf_counter() - t0, 1),
         }
         _append(raw, row)
-        print(f"[{model_name} s{seed} b{budget:4d}] val {vm['val_acc']:.3f} "
+        print(f"[{cfg.geometry[:3]} {model_name} s{seed} b{budget:4d}] val {vm['val_acc']:.3f} "
               f"dense {dense:.4f} | NFE med {nd['fwd_nfe_median']:.0f} "
               f"[{nd['fwd_nfe_q1']:.0f},{nd['fwd_nfe_q3']:.0f}] max {nd['fwd_nfe_max']:.0f} "
               f"| recon {rc['recon_max']:.1e} {'OK' if row['recon_ok'] else 'LOOSE'} "
-              f"| {row['elapsed_s']:.0f}s", flush=True)
+              f"| {row['status']} @ep{done} | {row['elapsed_s']:.0f}s", flush=True)
 
 
 def parse_args():
     p = argparse.ArgumentParser()
+    p.add_argument("--geometry", type=str, default="spheres", choices=list(_GEOM))
     p.add_argument("--seeds", type=str, default="0,1,2,3,4")
     p.add_argument("--budgets", type=str, default="25,50,100,200,500,1000")
     p.add_argument("--train_tol", type=float, default=1e-6)
     p.add_argument("--eval_tol", type=float, default=1e-6)
     p.add_argument("--recon_thresh", type=float, default=1e-2)
+    p.add_argument("--time_budget_s", type=float, default=1800.0,
+                   help="per-(model,seed) wall-clock cap; stiffer-than-integrable seeds stop here")
     p.add_argument("--results_dir", type=str, default="results/budget")
     p.add_argument("--models", type=str, default="NODE,ANODE-p1")
     return p.parse_args()
@@ -188,8 +205,9 @@ def main():
     for fn in ("budget_raw.csv", "budget_trajectory.csv"):
         if (out / fn).exists():
             (out / fn).unlink()
-    print(f"Budget sweep on {DEVICE} | models {models} | seeds {seeds} | budgets {budgets} "
-          f"| train_tol {cfg.train_tol} eval_tol {cfg.eval_tol}", flush=True)
+    print(f"Budget sweep on {DEVICE} | geometry {cfg.geometry} | models {models} | seeds {seeds} "
+          f"| budgets {budgets} | train_tol {cfg.train_tol} eval_tol {cfg.eval_tol} "
+          f"| cap {cfg.time_budget_s:.0f}s/seed", flush=True)
 
     for model_name in models:
         for seed in seeds:
