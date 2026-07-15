@@ -213,6 +213,22 @@ RAW (median[IQR], recon_ok 5/5 for BOTH models — all faithful):
   0.87 / gap +1.0). Thin circles lack a held-out 2-D *area*; the filled-sphere geometry is where
   Dupont's gap is dramatic. Circles-D2 dropped for time (secondary; partial in scratchpad/d2_old).
 - FLAG (unchanged): `DEVIATIONS.md` A8 says Dupont's wedge is π/13; paper text says [0,π/5]. Used π/5.
+- D2 committed d394a45.
+
+## 05:30 — C1/C3 MNIST preliminary (seeds 0-1 done; 2-4 running) + a faithfulness caveat
+RAW (mean seeds {0,1} by epoch): train-tol(1e-3) NFE **26.1→38.0** (peak ep3) then ~36; faithful
+-tol(1e-5) NFE **86→122**; test acc 0.70→0.96.
+- **Chen's NFE-growth direction is reproduced** (NFE rises over training; refutation "flat/
+  decreasing" NOT met).
+- **HONEST CAVEAT (recon check did its job):** the conv field STIFFENS with training — recon at
+  eval_tol 1e-5 drifts from 2e-3 (ep1) to ~1.2e-2 (ep5+), so **recon_ok only 9/20 epochs**;
+  past ~ep4 neither 1e-5 nor (a fortiori) the 1e-3 training tol is strictly integrating (~1%
+  rel error). So the *late-epoch* NFE numbers are at the edge of faithfulness. This is the SAME
+  tolerance-faithfulness phenomenon as the toy tear, milder/slower — it reinforces tonight's
+  central theme rather than contradicting anything. A fully-faithful 10-epoch curve needs eval_tol
+  ~1e-6/1e-7. NOT re-running tonight (compute/time); reporting with the recon_ok flag visible.
+- Decision: let the 5-seed run finish; commit with the caveat + per-epoch recon_ok. This is a
+  bounded, honest partial (NFE-growth shown in the recon_ok regime), NOT a clean full-budget claim.
 - Early MNIST signal (not yet a conclusion): fwd NFE 25.3→26.2→35.5 over epochs 1-3 (recon OK) —
   Chen's growth is appearing; will confirm at 10 ep × 5 seeds.
 
