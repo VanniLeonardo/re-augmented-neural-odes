@@ -417,3 +417,36 @@ NFE growth 25→500... over training: NODE ×1.59, ANODE ×1.31.
 - D6 (NFE-vs-loss) and D7 (train/test gap) in `figures/d3/{nfe_vs_loss,nfe_and_gap}.png`.
 - NO STOP trigger: ANODE matches, NODE undershoot is a budget-attributable miss (a finding), not
   a contradiction of the claim (ANODE>NODE holds decisively) or a theorem.
+
+---
+
+# Overnight session — part 3 (D3 faithfulness fix → CIFAR under a cap)
+
+## [1] D3 NODE faithful-NFE re-measurement PRE-DECLARED
+The committed D3 NODE row is recon_ok 2/5 at 1e-5 -> "NODE faithful NFE 86" and the "1.7x" ratio
+rest on a tol that does NOT integrate 3/5 NODE seeds. Re-measure BOTH D3 models
+(`run_d3_faithful_nfe.py`, retrain deterministically = identical committed fields), per epoch
+recording fwd NFE + recon at a LADDER {1e-5,1e-6,1e-7} (capped solves), 5 seeds, 8 epochs.
+- **Find the loosest tol where BOTH models are recon_ok 5/5 THROUGH the budget** (or record
+  honestly that the stiffest NODE seeds cannot be integrated even at 1e-7 -> that is the Dupont
+  mechanism, reported as data with recon_ok=false and NFE lower-bounded).
+- **Claim:** ANODE is cheaper in NFE at a tolerance where BOTH models are recon-faithful.
+  **REFUTED if** the NFE gap vanishes (ANODE >= NODE) or reverses once the NODE is faithfully
+  integrated. (Direction expected to hold; the point is a tol that survives the recon check.)
+- Update the D3 artifact/figure + append correction to DEVIATIONS (do NOT rewrite the committed
+  D3 narrative). ANODE was 5/5 at 1e-5 already; NODE is the binding column.
+
+## [1] D3 FAITHFUL NFE RESULT (5 seeds; `results/d3_faithful/`, `figures/d3/faithful_nfe.png`)
+RAW final-epoch median fwd NFE + recon_ok fraction (ladder):
+| eval_tol | NODE NFE | NODE recon_ok | ANODE NFE | ANODE recon_ok |
+|---|---|---|---|---|
+| 1e-5 | 86 | 2/5 | 50 | 5/5 |
+| 1e-6 | 146 | 3/5 | 92 | 5/5 |
+| **1e-7** | **482** | **5/5** | **230** | **5/5** |
+- **Loosest tol where BOTH models are recon_ok 5/5 = 1e-7.** At that common faithful tol:
+  **NODE 482 vs ANODE 230 -> ANODE 2.10x cheaper.** Pre-declared claim ("ANODE cheaper at a tol
+  where both recon-faithful") HOLDS; refutation (gap vanishes/reverses) NOT met. The direction is
+  confirmed and STRENGTHENED vs the committed 1.7x-at-1e-5 (which understated NODE because 3/5
+  NODE seeds weren't integrating at 1e-5).
+- The stiffest NODE seeds DO integrate at 1e-7 (5/5) within the 500k step cap -- so no "cannot
+  integrate" data point; the NODE flow is stiff but not beyond 1e-7. Submission-clean.
