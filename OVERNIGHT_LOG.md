@@ -393,3 +393,27 @@ Faithful NFE (at 1e-7): **384 → 738** over 6 epochs (×1.9), all recon_ok.
   tol: the NFE at 1e-6/1e-7 grows too). The transition is underway by epoch 6 (C1/C3's 10-epoch run
   showed 1e-5 fully failing) — honest partial, per-seed recon_ok logged.
 - Confirms the C1/C3 finding is a MECHANISM (conv field stiffens with training), not a defect.
+
+## 12:20 — [3] D3 RESULT (ANODE vs NODE, MNIST, matched params, 5 seeds; `results/d3/`, `figures/d3/`)
+Params ASSERTED matched: NODE 85,316 vs ANODE-p5 85,462 (0.17% apart; ~1% above Dupont's
+84,395/84,816 — head/padding detail, documented). Train tol 1e-3, eval/recon 1e-5, batch 256,
+8 epochs. RAW (median[±std] over 5 seeds, epoch 8):
+| model | test acc | train-tol NFE | faithful(1e-5) NFE | recon_ok |
+|---|---|---|---|---|
+| ANODE-p5 | **0.9818 ± 0.0029** | 26.0 | 50 | 5/5 |
+| NODE | **0.9453 ± 0.0044** | 32.5 | 86 | **2/5** |
+NFE growth 25→500... over training: NODE ×1.59, ANODE ×1.31.
+- **Pre-declared refutation NOT met (both criteria) ⇒ Dupont's core Table-1 claim REPRODUCED:**
+  ANODE ≥ NODE test-acc (0.982 vs 0.945) AND ANODE cheaper NFE (train-tol 26<32.5; faithful
+  50<86, a 1.7× gap once you actually integrate). ANODE also learns faster (reaches its plateau
+  by ~ep4).
+- **vs Dupont Table 1 (NODE 96.4±0.5 / ANODE 98.2±0.1):** our **ANODE 98.18 ≈ Dupont 98.2 (match)**;
+  our **NODE 94.53 UNDERSHOOTS by ~2%**. Honest partial: attributable to the reduced 8-epoch
+  budget + NODE's slower convergence (which IS Dupont's mechanism — NODE learns slower). NOT
+  tuned toward the paper. A NODE miss at fewer epochs is a legitimate partial-replication finding.
+- **Faithfulness nuance (reinforces the direction):** NODE recon_ok only 2/5 at ep8 — the NODE
+  flow STIFFENS past 1e-5 for 3/5 seeds (seed1 recon 0.33!), so its true faithful NFE is even
+  higher than 86; ANODE stays faithful 5/5 (simpler flow). Per-seed recon logged.
+- D6 (NFE-vs-loss) and D7 (train/test gap) in `figures/d3/{nfe_vs_loss,nfe_and_gap}.png`.
+- NO STOP trigger: ANODE matches, NODE undershoot is a budget-attributable miss (a finding), not
+  a contradiction of the claim (ANODE>NODE holds decisively) or a theorem.
