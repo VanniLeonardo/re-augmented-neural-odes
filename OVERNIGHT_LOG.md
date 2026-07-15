@@ -130,4 +130,69 @@ RAW (mean over seeds; NFE driven by tol 1e-3→1e-7): adjoint peak mem **442 MB 
   Chen's O(1)-memory-in-NFE claim (Table 1) **reproduced** by the corrected experiment (drives
   the ODE-Net's OWN NFE, not the Euler baseline depth the coursework varied). No theorem/paper
   contradiction. Faithfulness checks (recon + grad agreement) on every committed row.
-- Decision: commit as a complete experiment (CSV + script + plot + this log entry).
+- Decision: commit as a complete experiment (CSV + script + plot + this log entry). DONE (2b3d053).
+
+## 03:40 — C1/C3 (MNIST NFE-over-training) PRE-DECLARED + feasibility gate
+**Claim (Chen 2018, NFE grows):** the forward NFE of the MNIST conv ODE-Net INCREASES over
+training as the dynamics get more complex. **Refuted if** forward NFE is flat/decreasing over
+epochs (median over ≥5 seeds).
+**Faithfulness:** the eval tolerance must integrate — per-epoch reconstruction check on a fixed
+test batch (recon < 1e-2). A tolerance where recon fails is not measuring a flow.
+**Feasibility gate (compute ceiling):** MNIST at *toy-tight* tol could explode the backward NFE
+(C2 showed ~10^4 bwd NFE at 1e-6 on toy). Before a ≥5-seed run I PROBE 1 epoch × 1 seed: measure
+epoch wall-clock + recon at candidate tols. Pick the LOOSEST tol whose recon still passes (the
+conv field is smoother than the toy tear — C4 showed recon 4.7e-3 already at 1e-3 for an untrained
+conv field). If no tractable faithful tol exists within ~3 GPU-h/run, RECORD THAT AS A FINDING
+("MNIST NFE-over-training not faithfully measurable within the ceiling") and move on — do not
+blow the night on one experiment.
+
+## 03:50 — MNIST probe result + C1/C3 launched (bg b8k3xo0sm) → results/mnist_nfe/
+PROBE (1 seed, 100 batches, tol 1e-3, eval_tol 1e-5): fwd NFE 22.6, **bwd NFE 25 (BOUNDED — no
+explosion)**, recon 7.3e-4 (faithful), 31 s / 100 batches → ~2.4 min/epoch full.
+- **Important cross-experiment finding:** the backward-NFE blow-up we saw on the toy tear
+  (C2: ~10^4 at 1e-6) does NOT happen on the MNIST conv field — bwd ≈ fwd here. So the C2
+  explosion is a property of the *near-singular toy tear*, not of the adjoint in general. This
+  directly bears on C2 framing (the huge ratio is task-specific). Logged for the awake review.
+- Feasibility gate PASSED: tol 1e-3 train (recon-checked at 1e-5), 5 seeds × 10 epochs ≈ 2 GPU-h.
+  Launched `run_mnist_nfe.py`. Claim under test: forward NFE grows over training; faithful_fwd_nfe
+  (recon-checked) logged alongside train NFE so the growth is measured in the integrating regime.
+
+## 04:05 — DECISION: D2 relaunched leaner (killed the 200-ep/both-geom job)
+The first D2 job (200 ep × 40 runs at 1e-6 under 3-way CPU contention) was on track for 10+ h —
+would blow the ceiling. Killed it (bpinkgejq); the partial (2 circles NODE rows) is saved to
+scratchpad/d2_old. Relaunched (b4x3m87mt) **spheres-first** (Dupont's actual data), 150 epochs
+(the gap was clearly present at 200 ep on circles s0 — slice_loss 1.25 vs train 0.26 — and the
+flow contorts progressively, so 150 should still show it), 5 seeds, NODE + ANODE-p1. This is a
+scope/runtime trim, NOT a conclusion change; recorded here. Circles runs after spheres if time.
+- Early MNIST signal (not yet a conclusion): fwd NFE 25.3→26.2→35.5 over epochs 1-3 (recon OK) —
+  Chen's growth is appearing; will confirm at 10 ep × 5 seeds.
+
+## 04:20 — C2 RECHARACTERISATION RESULT (5 seeds × 2 fields × tol axis; `results/c2/c2_recharacterise.csv`, `figures/c2/bwd_fwd_ratio_vs_tol.png`)
+RAW (median bwd/fwd ratio over 5 seeds, trained 100 ep):
+| tol | spheres | circles | recon_ok |
+|---|---|---|---|
+| 1e-3 | 6.1 | 6.3 | **0/5 (non-integrating)** |
+| 1e-4 | 14.1 | 12.0 | 1/5 |
+| 1e-5 | 32.6 | 29.4 | 5/5 |
+| 1e-6 | 60.7 | 59.0 | 5/5 |
+| 1e-7 | 93.7 | 96.6 | 5/5 |
+Untrained control (seed 0): ratio 3.6→59 (spheres), 4.0→69 (circles) across 1e-3→1e-7.
+- **Pre-declared refutation of the withdrawal NOT met:** integrating-regime median ratio 52–58
+  (range 13–121), far outside the [0.5,2.0] "≈1" band. The C2 headline "backward ≈ forward"
+  stays withdrawn.
+- **Correcting my own earlier imprecise note (03:50):** the huge ratio is NOT "toy-specific" — it
+  is **primarily tolerance-driven** and appears even in an **untrained** field (ratio ~32× at
+  1e-6 with no training), so it is largely a property of the adjoint's reverse *augmented* system
+  (state + adjoint + param sensitivities: higher-dim, stiffer) than of the forward. Training adds
+  ~2× on top. The reason MNIST shows bwd≈fwd (~1.1) while the toy shows 30–100× is the **faithful
+  tolerance differs**: the near-singular toy tear only integrates at tight tol (1e-5+), where the
+  backward is expensive; the smooth MNIST conv field integrates at 1e-3, where it isn't. So the
+  operative variable is "what tolerance does this field need to be integrated," and the answer is
+  field-dependent.
+- **The small-ratio regime is the non-faithful regime:** at 1e-3/1e-4 (ratio ~4–14, closest to
+  the old "≈1" and Chen's 0.5) the trained field FAILS the recon check (0/5, 1/5) — those numbers
+  are not a solve. Any bwd/fwd headline measured at loose tol is measuring a non-integration.
+- **FRAMING (headline / secondary / cut) LEFT TO AWAKE REVIEW**, per instructions. My
+  characterisation: C2 is real and interesting but is a *tolerance×field* surface, not a single
+  ratio; it should not be an abstract headline as a number.
+- Committing as a complete experiment.
