@@ -489,3 +489,29 @@ download is done), GPU free, cap has ample room (~0.5 GPU-h consumed so far by t
 probes). Restarting as ONE clean invocation, fully detached (setsid) so a session boundary cannot
 kill it again. Config unchanged: 5 seeds x 10 epochs x {NODE, ANODE-p10}, batch 256, ladder
 {1e-5,1e-6,1e-7}, cap 500k steps.
+
+## [3] D4 RESUMED — PRE-DECLARED (written BEFORE the run; supersedes the killed launches)
+Two prior launches died (process teardown, then an unexplained death despite `setsid`). On
+inspection the harness was **destructive on restart** (`traj.unlink()`), so it could never have
+been completed incrementally — fixed in `2df1f0d` with resume keyed on the COMPLETE (model, seed).
+Surviving data: NODE seeds 0,1,2 complete (90 rows); seed 3's 27 rows are orphans (died at epoch
+9, no checkpoint → cannot resume mid-training) and are DROPPED and re-run from scratch.
+- **Params ASSERTED (re-checked now):** NODE k=125 = **173,611** vs ANODE-p10 (aug10, k=64) =
+  **172,452** — 0.67% apart, ~0.5–0.7% above Dupont's 172,358/171,799 (flatten-head detail, same
+  as D3). Batch 256, 10 epochs, 5 seeds, train tol 1e-3, ladder {1e-5,1e-6,1e-7}, cap 500k steps.
+- **Refutation (unchanged from the killed pre-declaration):** ANODE ≥ NODE test acc at matched
+  params WITH lower/flatter NFE, at a tol where BOTH are recon-faithful. **REFUTED if** ANODE acc
+  < NODE acc (median) OR ANODE NFE ≥ NODE NFE at a tol where both are recon_ok 5/5.
+- **Reporting tol:** the loosest tol where BOTH arms are recon_ok 5/5 at the final epoch (D3's
+  rule). If no tol achieves that, the cell is recorded as DATA (recon_ok=false, NFE
+  lower-bounded) and reported as such — never a loose-tol number dressed as faithful.
+- **vs Dupont Table 1: NODE 53.7±0.2 / ANODE 60.6±0.4** — report raw. A miss is a partial-
+  replication finding; do NOT tune toward the paper.
+- **Budget:** 18 GPU-h cap stands; projection ~3.5 GPU-h total, ~2.2 h remaining (2 NODE seeds
+  ≈27 min each + 5 ANODE seeds ≈16 min each). **If elapsed exceeds 8 GPU-h, STOP and flag.**
+- **Hardware:** local RTX 3090 for the whole arm, matching the 3 surviving NODE seeds — the D4
+  comparison is deliberately NOT split across the A100 cluster. Every row now records its GPU.
+- Note on the 3 surviving NODE seeds: all rows recon_ok at ALL three tolerances, i.e. CIFAR's NODE
+  field had NOT stiffened past 1e-5 by epoch 10 (unlike MNIST's in D3). If that holds for the
+  remaining seeds, the faithful reporting tol will be looser here than D3's 1e-7. Watch for it —
+  a *convenient* result gets more scrutiny, not less.
