@@ -25,6 +25,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from torchdiffeq import odeint
+
 from models.continuous import ODEFunc, ODEBlock
 from training.logging_backend import get_logger
 from training.utils import set_seed
@@ -73,6 +75,37 @@ def make_crossing(n: int, noise: float, seed: int) -> Tuple[torch.Tensor, torch.
     )
 
 
+@torch.no_grad()
+def eval_at_tol(model: CrossingFlow, x: torch.Tensor, y: torch.Tensor, tol: float,
+                cap: int) -> Dict[str, Any]:
+    """Re-evaluate a trained flow at one solver tolerance, with a reconstruction check.
+
+    Integrate forward then backward and require the input to be recovered: at a loose
+    tolerance the integrator reports a plausible NFE while not actually integrating the
+    field, so an MSE/NFE measured there is an artifact. Every reported row carries
+    recon_ok (see DEVIATIONS.md A4).
+    """
+    model.ode_block.atol = model.ode_block.rtol = tol
+    z = x
+    if model.augment_dim > 0:
+        z = torch.cat([x, torch.zeros(x.size(0), model.augment_dim, device=x.device, dtype=x.dtype)], dim=1)
+    t01 = torch.tensor([0.0, 1.0], device=x.device)
+    model.ode_func.nfe = 0
+    try:
+        fwd = odeint(model.ode_func, z, t01, method=model.ode_block.solver_type,
+                     atol=tol, rtol=tol, options={"max_num_steps": cap})[1]
+        nfe = float(model.ode_func.nfe)
+        back = odeint(model.ode_func, fwd, torch.flip(t01, [0]), method=model.ode_block.solver_type,
+                      atol=tol, rtol=tol, options={"max_num_steps": cap})[1]
+        rel = ((back - z).norm(dim=1).max() / (z.norm(dim=1).max() + 1e-9)).item()
+        mse = float(nn.functional.mse_loss(fwd[:, :1], y))
+    except Exception:
+        return {"eval_tol": tol, "mse": float("nan"), "fwd_nfe": -1.0,
+                "recon_rel": float("nan"), "recon_ok": 0, "capped": 1}
+    return {"eval_tol": tol, "mse": mse, "fwd_nfe": nfe, "recon_rel": rel,
+            "recon_ok": int(rel == rel and rel < 1e-2), "capped": 0}
+
+
 def _append_row(path: Path, row: Dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     exists = path.exists()
@@ -91,6 +124,7 @@ def run_one(augment_dim: int, seed: int, cfg: argparse.Namespace, device: torch.
     model = CrossingFlow(
         augment_dim=augment_dim, vf_width=cfg.ode_hidden_dim, solver=cfg.solver
     ).to(device)
+    model.ode_block.atol = model.ode_block.rtol = cfg.train_tol
     opt = torch.optim.Adam(model.parameters(), lr=cfg.lr)
     lossf = nn.MSELoss()
 
@@ -109,15 +143,18 @@ def run_one(augment_dim: int, seed: int, cfg: argparse.Namespace, device: torch.
         if epoch % cfg.log_every == 0 or epoch == cfg.epochs - 1:
             logger.log({"epoch": epoch, "mse": final_mse, "forward_nfe": final_nfe})
     logger.finish()
-    print(f"  {model_name:9s} seed {seed}: final MSE {final_mse:.4f} | fwd NFE {final_nfe:.0f}")
-    return {
-        "model_name": model_name,
-        "augment_dim": augment_dim,
-        "seed": seed,
-        "epochs": cfg.epochs,
-        "final_mse": final_mse,
-        "final_forward_nfe": final_nfe,
-    }
+
+    hardware = torch.cuda.get_device_name(0) if device.type == "cuda" else "cpu"
+    rows = []
+    for tol in [float(t) for t in cfg.eval_tols.split(",") if t.strip()]:
+        m = eval_at_tol(model, x, y, tol, cfg.cap)
+        print(f"  {model_name:9s} seed {seed} @tol {tol:.0e}: MSE {m['mse']:.4f} | "
+              f"fwd NFE {m['fwd_nfe']:.0f} | recon {m['recon_rel']:.2e} ok={m['recon_ok']}")
+        rows.append({"model_name": model_name, "augment_dim": augment_dim, "seed": seed,
+                     "epochs": cfg.epochs, "train_tol": cfg.train_tol,
+                     "train_mse_at_train_tol": final_mse, "train_nfe_at_train_tol": final_nfe,
+                     **m, "hardware": hardware})
+    return rows
 
 
 def parse_args() -> argparse.Namespace:
@@ -128,6 +165,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--lr", type=float, default=1e-2)
     p.add_argument("--ode_hidden_dim", type=int, default=16)
     p.add_argument("--solver", type=str, default="dopri5")
+    p.add_argument("--train_tol", type=float, default=1e-5,
+                   help="training solver tolerance (the old default 1e-3 does not integrate "
+                        "these fields -- see DEVIATIONS.md A4)")
+    p.add_argument("--eval_tols", type=str, default="1e-3,1e-5,1e-6,1e-7",
+                   help="ladder re-evaluated after training; every row carries recon_ok")
+    p.add_argument("--cap", type=int, default=500_000)
     p.add_argument("--seeds", type=str, default="0,1,2,3,4")
     p.add_argument("--log_every", type=int, default=50)
     p.add_argument("--results_dir", type=str, default="results/crossing")
@@ -141,9 +184,12 @@ def main() -> None:
     print(f"D8 crossing-flow on {device} | seeds {seeds}")
 
     summary_path = Path(cfg.results_dir) / "crossing_summary.csv"
+    if summary_path.exists():
+        summary_path.unlink()  # full re-run: every row must come from this invocation
     for augment_dim in (0, 1):
         for seed in seeds:
-            _append_row(summary_path, run_one(augment_dim, seed, cfg, device))
+            for row in run_one(augment_dim, seed, cfg, device):
+                _append_row(summary_path, row)
     print(f"Wrote {summary_path}")
 
 

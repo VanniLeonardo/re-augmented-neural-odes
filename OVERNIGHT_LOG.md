@@ -515,3 +515,23 @@ Surviving data: NODE seeds 0,1,2 complete (90 rows); seed 3's 27 rows are orphan
   field had NOT stiffened past 1e-5 by epoch 10 (unlike MNIST's in D3). If that holds for the
   remaining seeds, the faithful reporting tol will be looser here than D3's 1e-7. Watch for it —
   a *convenient* result gets more scrutiny, not less.
+
+## [3] D8 CROSSING FLOW — PRE-DECLARED re-run (was not reportable: no tol, no recon, no report script)
+The committed `results/crossing/` result (NODE MSE 1.0000, ANODE-p1 0.0005) was measured at the
+`ODEBlock` default **atol=rtol=1e-3** — the tolerance `DEVIATIONS.md` A4 records as
+*non-integrating* for these toy fields — and the CSV carried **no tolerance column, no recon
+check, and had no report/figure script**. By our own standing rule it is not reportable, however
+clean it looks. Re-running with train_tol 1e-5 and an eval ladder {1e-3, 1e-5, 1e-6, 1e-7}, 5
+seeds, every row carrying recon_ok + hardware. CPU (1-D toy; keeps the GPU free for D4).
+- **Claim (Dupont Prop. 1 / Fig 3):** a readout-free 1-D NODE flow is order-preserving and cannot
+  represent g(x): x<0→+1, x>0→−1; ANODE-p1 can.
+- **Theory-predicted value:** the best order-preserving map collapses both classes toward a
+  constant; with targets ±1 the optimal constant is 0, so **NODE MSE ≈ 1.0** is the floor the
+  theorem predicts, not merely "bad".
+- **REFUTED if** at a recon-faithful tolerance NODE MSE < 0.1 (the NODE solves it), **OR**
+  ANODE-p1 MSE > 0.1 (augmentation fails to help).
+- **STOP-and-flag:** NODE MSE materially below ~1.0 (say < 0.5) at a tol where recon_ok=1 would
+  contradict Proposition 1 — a theorem, not just a paper number. Do NOT resolve alone; leave the
+  raw numbers and flag.
+- Reporting tol: loosest tol where BOTH arms are recon_ok 5/5, same rule as D3/D4. The 1e-3 rung
+  is included deliberately so the old, non-integrating number stays visible as data.
