@@ -450,3 +450,42 @@ RAW final-epoch median fwd NFE + recon_ok fraction (ladder):
   NODE seeds weren't integrating at 1e-5).
 - The stiffest NODE seeds DO integrate at 1e-7 (5/5) within the 500k step cap -- so no "cannot
   integrate" data point; the NODE flow is stiff but not beyond 1e-7. Submission-clean.
+
+## [2] D4 CIFAR-10 PRE-DECLARED (under 18 GPU-h HARD CAP)
+Matched params ASSERTED: NODE k=125 = 173,611 vs ANODE-p10 (aug10,k=64) = 172,452 (0.67% apart,
+~0.5% above Dupont's 172,358/171,799). Batch 256. Faithful machinery = D3's.
+- **Tolerance FIRST (probe before headline):** CIFAR's NODE stiffens more than MNIST's, so I probe
+  timing + recon at a ladder {1e-5,1e-6,1e-7} on a few full epochs (1 seed) to (a) find the
+  recon-faithful tol and (b) project the cap. The headline then measures per-epoch recon at that
+  ladder so the faithful NFE and recon_ok are direct (no single-tol guess). A cell not integrable
+  within the step cap is RECORDED AS DATA (recon_ok=false, NFE lower-bounded), never reported at
+  loose tol as faithful.
+- **Refutation:** ANODE ≥ NODE test acc at matched params WITH lower/flatter NFE, at a
+  recon-faithful tol. REFUTED if ANODE acc < NODE acc (median) OR ANODE NFE ≥ NODE NFE at a tol
+  where both are recon-faithful.
+- **vs Dupont Table 1: NODE 53.7±0.2 / ANODE 60.6±0.4** — report raw; a MISS is a partial-
+  replication finding, NOT tuned.
+- **CAP DISCIPLINE:** ~18 GPU-h for the whole D4 block; the harness prints elapsed h. If a faithful
+  run would blow it, STOP, commit what's recon-checked, flag — never drop to loose tol to fit.
+  Seeds: ≥5 ideal; if the cap forces it, ≥3 (stated as a deviation).
+
+## [2] D4 PROBE result + cap projection (CIFAR-10 downloaded; network-throttled ~47 min, wall-clock only)
+Probe (1 seed, 2 ep, full batches, ladder): NODE ~130-148 s/ep, ANODE ~73-82 s/ep (incl. 3-tol
+ladder recon). Early epochs BOTH recon_ok at all tols (1e-5 recon ~4e-4); CIFAR NODE will stiffen
+with training (as D3 MNIST did) -> headline uses the ladder {1e-5,1e-6,1e-7} to capture faithful
+NFE + recon_ok per epoch and report at the loosest COMMON faithful tol.
+- **Cap projection: 5 seeds x 10 epochs ~= 3.5 GPU-h** (NODE ~27 min/seed, ANODE ~16 min/seed) --
+  well under the 18 GPU-h cap. So **5 seeds, 10 epochs, batch 256** (no seed reduction needed).
+- If a NODE cell can't integrate even at 1e-7 by late epochs (CIFAR NODE stiffer than MNIST's),
+  that cell is recorded as DATA (recon_ok=false, NFE lower-bounded), NOT reported at loose tol.
+- Headline config: `run_d4_anode_cifar.py --seeds 0-4 --epochs 10 --eval_tols 1e-5,1e-6,1e-7
+  --batch_size 256 --cap 500000`. Launching now.
+
+## [2] D4 headline INTERRUPTED then RESTARTED (process teardown, not a result)
+The first headline launch was killed by a Claude Code process teardown after NODE seeds 0-1
+(57 rows, 2/10 model-seeds) — NOT enough to conclude, and per the standing rule a partial killed
+run is never patched into a result. CIFAR is now cached locally (the ~47 min network-throttled
+download is done), GPU free, cap has ample room (~0.5 GPU-h consumed so far by the partial +
+probes). Restarting as ONE clean invocation, fully detached (setsid) so a session boundary cannot
+kill it again. Config unchanged: 5 seeds x 10 epochs x {NODE, ANODE-p10}, batch 256, ladder
+{1e-5,1e-6,1e-7}, cap 500k steps.
