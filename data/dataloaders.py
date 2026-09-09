@@ -6,6 +6,31 @@ from typing import Optional, Tuple
 from data.synthetic import make_circles, make_moons, make_spheres, make_spirals
 
 
+def _fetch(build, name: str, data_root: str):
+    """Build a torchvision dataset, failing LOUDLY and usefully if it cannot be got.
+
+    Reproduction depends on a third-party download. As of 2026-09 the canonical MNIST
+    host (yann.lecun.com) returns HTTP 404 and torchvision silently falls back to the
+    ossci-datasets S3 mirror. That fallback works today, but if the mirror also goes
+    away the underlying error is opaque, so we translate it into an actionable message
+    naming the directory to populate. See README "Datasets and network access".
+    """
+    try:
+        return build()
+    except Exception as exc:
+        raise RuntimeError(
+            f"Could not obtain {name} under {data_root!r}: {type(exc).__name__}: {exc}\n"
+            f"\n{name} is downloaded on first use and is NOT committed (datasets are "
+            f"gitignored).\nThe canonical MNIST host (yann.lecun.com) now 404s and "
+            f"torchvision falls back to\nthe ossci-datasets S3 mirror; if that mirror is "
+            f"also unreachable -- offline machine,\nfirewalled cluster node, mirror "
+            f"retired -- no experiment can run.\n"
+            f"\nFix: copy an existing {name} directory into {data_root!r} (e.g. from "
+            f"another machine\nwith `rsync -az {data_root}/ host:/path/to/repo/{data_root}/`), "
+            f"or download it by hand.\n"
+        ) from exc
+
+
 def flatten_tensor(x: torch.Tensor) -> torch.Tensor:
     return x.view(-1)
 
@@ -19,8 +44,10 @@ def get_cifar10_dataloaders(
     augmentation, to keep the (A)NODE comparison about the flow, not data augmentation.
     Seeded train shuffle for reproducibility (like the MNIST loader)."""
     transform = transforms.Compose([transforms.ToTensor()])
-    train_dataset = datasets.CIFAR10(root=data_root, train=True, download=True, transform=transform)
-    test_dataset = datasets.CIFAR10(root=data_root, train=False, download=True, transform=transform)
+    train_dataset = _fetch(lambda: datasets.CIFAR10(
+        root=data_root, train=True, download=True, transform=transform), "CIFAR-10", data_root)
+    test_dataset = _fetch(lambda: datasets.CIFAR10(
+        root=data_root, train=False, download=True, transform=transform), "CIFAR-10", data_root)
     generator = torch.Generator().manual_seed(seed) if seed is not None else None
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
                               num_workers=0, generator=generator)
@@ -50,12 +77,10 @@ def get_mnist_dataloaders(
         transform_list.append(transforms.Lambda(flatten_tensor))
     transform = transforms.Compose(transform_list)
 
-    train_dataset = datasets.MNIST(
-        root=data_root, train=True, download=True, transform=transform
-    )
-    test_dataset = datasets.MNIST(
-        root=data_root, train=False, download=True, transform=transform
-    )
+    train_dataset = _fetch(lambda: datasets.MNIST(
+        root=data_root, train=True, download=True, transform=transform), "MNIST", data_root)
+    test_dataset = _fetch(lambda: datasets.MNIST(
+        root=data_root, train=False, download=True, transform=transform), "MNIST", data_root)
 
     generator = None
     if seed is not None:
