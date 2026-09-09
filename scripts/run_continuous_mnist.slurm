@@ -12,7 +12,9 @@
 #SBATCH --output=logs/%x_%j.out
 #SBATCH --error=logs/%x_%j.err
 
-set -euo pipefail
+# NOT `set -u`: conda's activate.d hooks reference unbound vars (e.g.
+# MKL_INTERFACE_LAYER), which aborts the job at `conda activate` under -u.
+set -eo pipefail
 mkdir -p logs
 
 # Portable: run from the submission directory (falls back to the repo root).

@@ -12,7 +12,9 @@
 #SBATCH --output=logs/%x_%j.out
 #SBATCH --error=logs/%x_%j.err
 
-set -euo pipefail
+# NOT `set -u`: conda's activate.d hooks reference unbound vars (e.g.
+# MKL_INTERFACE_LAYER), which aborts the job at `conda activate` under -u.
+set -eo pipefail
 mkdir -p logs
 
 cd "${SLURM_SUBMIT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
