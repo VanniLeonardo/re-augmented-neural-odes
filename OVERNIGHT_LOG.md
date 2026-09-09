@@ -582,3 +582,22 @@ label covered C3 (NFE-over-training) only; this was masked by the naming. Buildi
   axis) and are excluded from the faithful-cost claims, never deleted.
 - **Hardware:** A100 (Bocconi HPC) for the whole C1 block — a NEW experiment with no existing
   rows, so it is internally consistent; D4 stays on the local 3090. Every row records its GPU.
+
+## [2] C1 REFERENCE-COST BENCHMARK (design probe, measured not guessed) — a stiffness finding
+Two C1 attempts stalled inside the high-accuracy reference solve (>19 min, no output), so I
+benchmarked it instead of guessing a third time (`--ref_bench`, 5-epoch-trained conv field,
+batch 32, dopri8):
+| ref tol | 1e-5 | 1e-6 | 1e-7 | 1e-8 | 1e-9 |
+|---|---|---|---|---|---|
+| NFE | 925 | 7,074 | 44,423 | 207,196 | (>20 min, cancelled) |
+| wall-clock | 1.0 s | 8.1 s | 51.0 s | 237.1 s | — |
+- **Growth is ≈5–7× per decade of tolerance.** For an 8th-order explicit method on a non-stiff
+  field the cost should scale ≈ tol^(-1/8), i.e. **~1.33× per decade**. Observing 5–7× is a
+  strong **stiffness** signature: dopri8 is an explicit method and the trained MNIST conv field
+  is stiff (consistent with C3, where faithful NFE grew 384→738 over 6 epochs). Recording this as
+  an observation; it is *not* the pre-declared C1 claim and is not being fitted to.
+- **Design decision (from the measurement):** reference = **dopri8 @ 1e-8** (207k NFE, ~4 min/seed
+  — affordable), sweep tolerances **{1e-1 … 1e-5}**, eval batch 32. That is **exactly Chen's Fig
+  3a-b tolerance range (1e-0…1e-5)** with **3 orders of headroom** between the tightest swept
+  tolerance and the reference, so the error axis is never reference-limited.
+- Trained models are now cached per seed, so this design iteration cost one training run, not four.
