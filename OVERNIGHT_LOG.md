@@ -667,3 +667,31 @@ dopri8 @ 1e-8. RAW medians (adaptive):
   the tolerance number is not.
 - Fixed-step arm behaves exactly as numerical analysis predicts: NFE = steps × stages (euler 1×,
   midpoint 2×, rk4 4×) and error falls at the method's order (rk4 7.1e-1 → 7.3e-6 over 1→128 steps).
+
+## [4] D3 + D4 ACCURACY-FAITHFULNESS RE-RUN — PRE-DECLARED (closes the flag raised at D4)
+The D4 result flagged that **`test_acc` is measured at the TRAIN tolerance 1e-3 while the recon
+ladder started at 1e-5**, so the reconstruction check had never been run at the tolerance the
+accuracy is measured at. Same defect in D3. Closing it by measurement, not argument.
+- **Change:** the ladder now **includes the 1e-3 train rung** (so the accuracy tolerance is itself
+  recon-checked every epoch), and at the **final epoch** the full test set is re-evaluated **at
+  every rung** (`test_acc_at_tol`). Final epoch only — a full CIFAR test pass at 1e-7 costs ~20×
+  one at 1e-3, and the headline number lives at the final epoch.
+- **Ladder:** {1e-3, 1e-5, 1e-6, 1e-7}. D4: 5 seeds × 10 epochs. D3: 5 seeds × 8 epochs (matching
+  the committed runs so the numbers are comparable).
+- **What is under test:** whether the reported accuracies are artifacts of a non-integrating
+  tolerance.
+  - **R-ACC1 (accuracy is tolerance-robust):** at the final epoch, |acc(1e-3) − acc(faithful tol)|
+    < 0.5 pp for both arms. **REFUTED if** the accuracy moves ≥0.5 pp between the train tolerance
+    and the loosest recon-faithful tolerance — which would mean the committed D3/D4 accuracies
+    were measured in a regime that was not integrating, and **both must be restated**.
+  - **R-ACC2 (the ANODE>NODE gap survives):** the ANODE−NODE accuracy gap keeps its sign and stays
+    >1 pp at a recon-faithful tolerance. **REFUTED if** the gap closes or inverts.
+- **Prediction on record (so a miss is visible):** I expect R-ACC1 to HOLD — the D4 NFE at 1e-3 is
+  ~20 vs ~410 at 1e-7, but a classifier argmax is far less sensitive than an NFE count. If it does
+  NOT hold, the D3/D4 accuracy claims are retracted, not patched.
+- **STOP-and-flag:** if the accuracy at a recon-faithful tol moves the NODE row AWAY from Dupont's
+  53.7 by more than the 0.5 pp band, say so — the current agreement would then be a loose-tolerance
+  coincidence, which is a finding about *our* method, not about Dupont.
+- Hardware: A100 (HPC), per-seed array shards (`--tag`), every row records its GPU. The existing
+  `results/d3/d3_trajectory.csv` and `results/d4/d4_trajectory.csv` are NOT overwritten — shards
+  land beside them and are merged only after the checks above are evaluated.

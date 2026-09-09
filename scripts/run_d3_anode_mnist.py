@@ -89,6 +89,10 @@ def main():
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--tol", type=float, default=1e-3)
     p.add_argument("--eval_tol", type=float, default=1e-5)
+    p.add_argument("--eval_tols", default="",
+                   help="tolerance ladder; INCLUDE the train tol (1e-3) so the tolerance the "
+                        "accuracy is measured at is itself recon-checked")
+    p.add_argument("--tag", default="", help="suffix for per-seed shards (HPC array jobs)")
     p.add_argument("--recon_thresh", type=float, default=1e-2)
     p.add_argument("--results_dir", default="results/d3")
     p.add_argument("--models", default="NODE,ANODE-p5")
@@ -105,7 +109,9 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     seeds = [int(s) for s in args.seeds.split(",") if s.strip()]
-    traj = Path(args.results_dir) / "d3_trajectory.csv"
+    traj = Path(args.results_dir) / f"d3_trajectory{args.tag}.csv"
+    ladder = [float(t) for t in args.eval_tols.split(",") if t.strip()] or [args.eval_tol]
+    hardware = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu"
     if traj.exists():
         traj.unlink()
     # assert matched params once
@@ -130,19 +136,35 @@ def main():
                 tm = train_epoch(model, tr, opt, crit, device)
                 dt = time.perf_counter() - t0
                 em = eval_epoch(model, te, crit, device)
-                rel, rnfe = recon_check(model, x_fixed, args.eval_tol, device)
-                row = {"model": spec, "params": counts[spec], "seed": seed, "epoch": epoch + 1,
-                       "tol": args.tol, "eval_tol": args.eval_tol,
-                       "train_acc": tm["accuracy"], "train_loss": tm["loss"],
-                       "test_acc": em["accuracy"], "test_loss": em["loss"],
-                       "train_fwd_nfe": tm.get("forward_nfe_mean", float("nan")),
-                       "faithful_fwd_nfe": rnfe, "recon_rel": rel,
-                       "recon_ok": int(rel < args.recon_thresh),
-                       "gap_acc": tm["accuracy"] - em["accuracy"], "epoch_s": round(dt, 1)}
-                _append(traj, row)
+                is_last = (epoch + 1 == args.epochs)
+                for etol in ladder:
+                    rel, rnfe = recon_check(model, x_fixed, etol, device)
+                    # `test_acc` is measured at the TRAINING tolerance, whose recon status the
+                    # ladder now records (the 1e-3 rung). At the final epoch -- where the headline
+                    # number lives -- also re-measure accuracy AT this tolerance, so the reported
+                    # accuracy can be quoted at a tol that passes the reconstruction check rather
+                    # than merely assumed to be tolerance-insensitive. Final epoch only: a full
+                    # test pass at 1e-7 costs far more than one at 1e-3.
+                    if is_last:
+                        keep = (model.ode_block.atol, model.ode_block.rtol)
+                        model.ode_block.atol = model.ode_block.rtol = etol
+                        em_t = eval_epoch(model, te, crit, device)
+                        model.ode_block.atol, model.ode_block.rtol = keep
+                    else:
+                        em_t = {"accuracy": float("nan"), "loss": float("nan")}
+                    row = {"model": spec, "params": counts[spec], "seed": seed, "epoch": epoch + 1,
+                           "tol": args.tol, "eval_tol": etol,
+                           "train_acc": tm["accuracy"], "train_loss": tm["loss"],
+                           "test_acc": em["accuracy"], "test_loss": em["loss"],
+                           "train_fwd_nfe": tm.get("forward_nfe_mean", float("nan")),
+                           "faithful_fwd_nfe": rnfe, "recon_rel": rel,
+                           "recon_ok": int(rel < args.recon_thresh),
+                           "gap_acc": tm["accuracy"] - em["accuracy"], "epoch_s": round(dt, 1),
+                           "test_acc_at_tol": em_t["accuracy"],
+                           "test_loss_at_tol": em_t["loss"], "hardware": hardware}
+                    _append(traj, row)
                 print(f"[{spec} s{seed} e{epoch+1}] test {em['accuracy']:.4f} loss {em['loss']:.3f} "
-                      f"| NFE {row['train_fwd_nfe']:.1f} | recon {rel:.1e} "
-                      f"{'OK' if row['recon_ok'] else 'LOOSE'} | {dt:.0f}s", flush=True)
+                      f"| NFE {tm.get('forward_nfe_mean', float('nan')):.1f} | {dt:.0f}s", flush=True)
     print(f"Wrote {traj}", flush=True)
 
 
