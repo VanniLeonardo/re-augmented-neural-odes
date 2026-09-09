@@ -556,3 +556,29 @@ RAW median over 5 seeds (MSE | fwd NFE | recon_ok fraction):
   never been *established* faithfully, and robustness is a finding, not an assumption. The ANODE
   arm is the one that moves: it is recon-faithful from 1e-5 while the NODE arm needs 1e-7, i.e.
   the NODE's failing flow is also the stiffer one to integrate.
+
+## [2] C1 SOLVER DYNAMICS — PRE-DECLARED (the genuinely missing experiment)
+Canonical C1 (`REPLICATION_PLAN.md` §3.B: Chen Fig 3a-b — numerical error ↓ and cost ↑ as
+tolerance tightens, forward time ∝ NFE) had **no committed CSV at all**. The overnight "C1/C3"
+label covered C3 (NFE-over-training) only; this was masked by the naming. Building it now:
+`scripts/run_c1_solver_dynamics.py`, ≥5 seeds, on the trained MNIST conv ODE-Net.
+- **Design:** ONE trained model per seed (5 epochs at train tol 1e-3), then a frozen
+  **evaluation** sweep — adaptive {bosh3, dopri5, dopri8} × tol {1e-1…1e-7} and fixed-step
+  {euler, midpoint, rk4} × steps {1…128}. Fixed-step solvers are not tolerance-controlled, so
+  their analogous cost axis is the step count; both give an accuracy-vs-cost curve.
+- **Error is measured against a high-accuracy REFERENCE endpoint** (dopri8 @ 1e-10, ≥2 orders
+  tighter than the tightest swept tol) on a fixed test feature batch — so "numerical error" is
+  the *integrator's*, not the classifier's. Wall-clock is the solve alone, CUDA-synchronised,
+  median of 5 repeats. Forward AND backward (adjoint) NFE recorded. Every row carries recon_ok.
+- **R-C1a (error falls):** rel_err decreases monotonically as tol tightens, per adaptive solver.
+  **REFUTED if** rel_err is flat or increases across the range (above the reference floor).
+- **R-C1b (cost rises):** fwd NFE and wall-clock increase monotonically as tol tightens.
+  **REFUTED if** NFE is flat or decreasing.
+- **R-C1c (time ∝ NFE — Chen Fig 3b):** forward time and fwd NFE are strongly rank-correlated.
+  **REFUTED if** Spearman ρ < 0.9 pooled within a solver.
+- **STOP-and-flag:** a *higher-order* solver showing systematically LARGER error than a
+  lower-order one at matched NFE would contradict standard numerical analysis, not just Chen.
+- Rows failing recon are DATA (loose-tol rows are expected to fail; that is the point of the
+  axis) and are excluded from the faithful-cost claims, never deleted.
+- **Hardware:** A100 (Bocconi HPC) for the whole C1 block — a NEW experiment with no existing
+  rows, so it is internally consistent; D4 stays on the local 3090. Every row records its GPU.
