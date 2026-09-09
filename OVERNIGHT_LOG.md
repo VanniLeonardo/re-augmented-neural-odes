@@ -601,3 +601,35 @@ batch 32, dopri8):
   3a-b tolerance range (1e-0…1e-5)** with **3 orders of headroom** between the tightest swept
   tolerance and the reference, so the error axis is never reference-limited.
 - Trained models are now cached per seed, so this design iteration cost one training run, not four.
+
+## [3] D4 RESULT — CIFAR-10 matched-param NODE vs ANODE (5 seeds, COMPLETE; `results/d4/`)
+Finished in **1.85 GPU-h** (cap 18 h; stop-flag 8 h — neither approached). 300 rows = 2 models ×
+5 seeds × 10 epochs × 3 tols, **all on one RTX 3090**, resumed over the 3 surviving NODE seeds.
+RAW final epoch (median over 5 seeds):
+| eval_tol | NODE acc | NODE NFE | NODE recon | ANODE-p10 acc | ANODE NFE | ANODE recon |
+|---|---|---|---|---|---|---|
+| 1e-5 | 53.52 | 62 | 5/5 | 59.21 | 50 | **4/5** |
+| **1e-6** | 53.52 | **122** | 5/5 | 59.21 | **98** | 5/5 |
+| 1e-7 | 53.52 | 410 | 5/5 | 59.21 | 212 | 5/5 |
+- **Loosest tol where BOTH arms are recon-faithful: 1e-6** → NODE NFE 122 vs ANODE 98,
+  **ANODE 1.24× cheaper**. (At 1e-7: 410 vs 212 = 1.93×.)
+- **Pre-declared refutation NOT met:** ANODE acc 59.21 ≥ NODE 53.52, AND ANODE NFE < NODE NFE at a
+  tol where both are recon_ok 5/5.
+- **vs Dupont Table 1 (raw, untuned):** NODE **53.59 ± 0.50** vs Dupont **53.7 ± 0.2** — matches
+  within noise. ANODE **59.34 ± 0.70** vs Dupont **60.6 ± 0.4** — **~1.3 pp low**, just outside
+  combined spread → a **partial** replication on the ANODE number, reported as such.
+  Per-seed NODE [53.52, 54.48, 53.01, 53.25, 53.71]; ANODE [60.61, 58.80, 59.21, 58.61, 59.49].
+- **SCRUTINY (the NODE number is suspiciously close, so it gets more, not less):**
+  **`test_acc` is measured at the TRAIN tolerance 1e-3, and the recon ladder starts at 1e-5 — so
+  the reconstruction check has NEVER been run at the tolerance the accuracy is measured at.**
+  Since recon degrades as tolerance loosens (ANODE is already 4/5 at 1e-5), the accuracy numbers
+  are plausibly measured in a regime that would fail the check. The **NFE** comparison is faithful
+  (recon-checked at 1e-6); the **accuracy** comparison is *not yet* established as faithful.
+  **This is inherited from D3's design and applies to D3's MNIST accuracies identically.**
+  It does not change the refutation outcome (the ANODE>NODE accuracy gap is 5.7 pp, far larger
+  than any plausible integration artifact), but it is a real gap in our own discipline and must
+  not be reported as if recon-checked. FLAGGED for decision — the fix is a re-run with a 1e-3
+  recon rung + accuracy re-measured across the ladder (D4 ≈1.9 GPU-h, D3 cheaper); the harnesses
+  should also cache checkpoints (as C1 now does) so this never costs a full retrain again.
+- Inversion vs D3 worth noting: on CIFAR the **ANODE** arm is the one that fails recon at 1e-5
+  (4/5) while NODE is 5/5 at every rung — the opposite of D3/MNIST, where NODE was 2/5 at 1e-5.
