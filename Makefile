@@ -1,38 +1,52 @@
 # ReScience C replication — reproduction entry points.
 #
-# Fast path (no GPU, no accounts, < 5 min):   make smoke
-# Full reproduction (GPU, paper settings):    make reproduce-all
-# Container acceptance gate:                   make docker-smoke
+#   make smoke        Fast end-to-end check (no GPU, no accounts, < 5 min)
+#   make test         Gated unit tests
+#   make figures      EVERY paper figure, regenerated from committed CSVs (< 2 min, no GPU)
+#   make reproduce-all  Re-run the whole replication from scratch (GPU, ~15-20 h)
+#   make docker-smoke Container acceptance gate
 #
-# Logging defaults to the CSV backend (no W&B account). Set NODE_LOGGER=wandb to
-# opt into Weights & Biases. Scope: Dupont ANODE (primary) + Chen C1-C4. Rubanova
-# is excluded (see extra/README.md). CIFAR-10 (D4) is a gated stretch, not here.
+# Scope: Dupont et al. 2019 (ANODE) primary + Chen et al. 2018 claims C1-C4.
+# Rubanova/Latent-ODE is excluded (see OUT_OF_SCOPE.md). Logging defaults to the CSV
+# backend (no W&B account); set NODE_LOGGER=wandb to opt in.
+#
+# `figures` needs NO GPU and NO training: the committed per-seed CSVs under results/
+# are the canonical artifacts and every figure is rebuilt from them. That is the
+# command a reviewer wants.
 
 PY ?= python
 SMOKE_DIR := .smoke
 SEEDS ?= 0,1,2,3,4
 
-.PHONY: help smoke test reproduce-all mnist-baselines table2 table3 anode-figures \
-        solver-ablation fig3 d8 factorial budget c2-guard env docker-build docker-smoke clean
+.PHONY: help smoke test figures reproduce-all reproduce-dupont reproduce-chen \
+        d1 d2 d3 d4 d8 c1 c2 c3 c4 \
+        fig-d1 fig-d2 fig-d3 fig-d4 fig-d8 fig-c1 fig-c2 fig-c3 fig-c4 \
+        coursework mnist-baselines table2 table3 anode-figures solver-ablation fig3 \
+        factorial budget c2-guard env docker-build docker-smoke clean
 
 help:
-	@echo "Targets:"
-	@echo "  smoke           Fast end-to-end pipeline check (<5 min, no GPU, no W&B)"
-	@echo "  test            Gated unit tests (pytest -m 'not extra')"
-	@echo "  reproduce-all   Full reproduction at paper settings (GPU)"
-	@echo "  mnist-baselines Our seeded MNIST baselines (NOT Chen Table 1)"
-	@echo "  table2          ANODE concentric-circles sweep (Dupont) + figures"
-	@echo "  table3          ANODE missing-slice generalization (Dupont Fig 9) + figures"
-	@echo "  solver-ablation Chen Fig 3 solver/NFE dynamics"
-	@echo "  fig3            Chen Fig 3 tolerance diagnostic (conv ODE-Net)"
-	@echo "  budget          Dupont Fig 6: NODE vs ANODE NFE-growth vs training budget (accurate tol)"
-	@echo "  c2-guard        C2: bwd/fwd NFE ratio across a tolerance axis + reconstruction check"
-	@echo "  anode-figures   Aggregate ANODE CSVs -> figures (no manual step)"
-	@echo "  docker-smoke    Build the CPU image and run 'make smoke' inside it"
-	@echo "  clean           Remove scratch/generated outputs"
+	@echo "Reviewer path (no GPU needed):"
+	@echo "  smoke            Fast end-to-end pipeline check (<5 min)"
+	@echo "  test             Gated unit tests (pytest -m 'not extra')"
+	@echo "  figures          Regenerate EVERY paper figure from committed CSVs (<2 min)"
+	@echo "  docker-smoke     Build the CPU image and run 'make smoke' inside it"
 	@echo ""
-	@echo "  (Stage C will add: C2 fwd/bwd-NFE sweep, C4 memory-vs-NFE, D3 ANODE-MNIST,"
-	@echo "   D8 crossing-flow demo, and the missing-slice grid.)"
+	@echo "Full re-run from scratch (GPU; costs in parentheses are measured or estimated):"
+	@echo "  reproduce-all    Everything below (~15-20 GPU-h)"
+	@echo "  reproduce-dupont d1 d2 d3 d4 d8      Dupont ANODE (primary)"
+	@echo "  reproduce-chen   c1 c2 c3 c4         Chen NODE claims C1-C4"
+	@echo ""
+	@echo "  d1  Toy separation / NFE growth vs budget   (~2 h, CPU)"
+	@echo "  d2  Missing-slice generalisation, Fig 9     (~1-2 h, CPU)"
+	@echo "  d3  Matched-param MNIST + faithful NFE      (~1.5 h, GPU)"
+	@echo "  d4  Matched-param CIFAR-10, Table 1         (1.9 h, GPU -- measured)"
+	@echo "  d8  1-D crossing flow, Fig 3 / Prop 1       (~5 min, CPU)"
+	@echo "  c1  Solver dynamics, Fig 3a-b               (~3.5 h serial, GPU)"
+	@echo "  c2  bwd/fwd NFE ratio vs tolerance          (~1-2 h)"
+	@echo "  c3  NFE growth over training + stiffening   (~3 h, GPU)"
+	@echo "  c4  O(1) memory vs NFE                      (~0.5 h, GPU)"
+	@echo ""
+	@echo "  coursework       Pre-replication course experiments (NOT part of the submission)"
 
 # --------------------------------------------------------------------------
 # Fast verification — no GPU required, bounded by NODE_MAX_BATCHES.
@@ -67,10 +81,112 @@ test:
 	$(PY) -m pytest -q -m "not extra"
 
 # --------------------------------------------------------------------------
-# Full reproduction (GPU; paper settings). Rubanova/CIFAR/SVHN excluded.
+# FIGURES — every paper figure, rebuilt from the committed per-seed CSVs.
+# No GPU, no training, no network. Each target also prints the pre-declared
+# refutation check for its claim, so the numbers are auditable, not just drawn.
 # --------------------------------------------------------------------------
-reproduce-all: mnist-baselines table2 table3 solver-ablation
-	@echo "reproduce-all complete. Figures under figures/ ; numbers under results/."
+figures: fig-d1 fig-d2 fig-d3 fig-d4 fig-d8 fig-c1 fig-c2 fig-c3 fig-c4
+	@echo ""
+	@echo "All figures regenerated under figures/ from committed results/*.csv."
+
+fig-d1:  ## Dupont Fig 6 analog: NFE growth vs training budget (both geometries)
+	$(PY) -m scripts.d1_report
+	$(PY) -m scripts.plot_budget_sweep
+	$(PY) -m scripts.plot_budget_sweep --results_dir results/budget_circles \
+	  --figures_dir figures/budget_circles
+
+fig-d2:  ## Dupont Fig 9: missing-slice generalisation
+	$(PY) -m scripts.d2_report
+	$(PY) -m scripts.plot_d2
+
+fig-d3:  ## Dupont Table 1 (MNIST) + the recon-faithful NFE re-measurement
+	$(PY) -m scripts.d3_report
+	$(PY) -m scripts.d3_faithful_report
+
+fig-d4:  ## Dupont Table 1 (CIFAR-10)
+	$(PY) -m scripts.d4_report
+
+fig-d8:  ## Dupont Fig 3 / Proposition 1: the 1-D crossing flow
+	$(PY) -m scripts.d8_report
+
+fig-c1:  ## Chen Fig 3a-b: solver dynamics (error and cost vs tolerance)
+	$(PY) -m scripts.c1_report
+
+fig-c2:  ## Chen Fig 3c recharacterised: bwd/fwd NFE as a tolerance x field surface
+	$(PY) -m scripts.plot_c2_surface
+	$(PY) -m scripts.plot_c2_recharacterise
+
+fig-c3:  ## Chen Fig 3d: NFE grows during training (+ the stiffening mechanism)
+	$(PY) -m scripts.plot_mnist_nfe
+	$(PY) -m scripts.plot_mnist_stiffening
+
+fig-c4:  ## Chen Table 1 memory column, corrected: O(1) memory vs NFE
+	$(PY) -m scripts.plot_c4
+
+# --------------------------------------------------------------------------
+# FULL RE-RUN (GPU). Each target regenerates the CSVs its fig-* target consumes.
+# Settings are the ones that produced the committed results (see OVERNIGHT_LOG.md).
+# --------------------------------------------------------------------------
+reproduce-all: reproduce-dupont reproduce-chen figures
+	@echo "reproduce-all complete. Numbers under results/, figures under figures/."
+
+reproduce-dupont: d8 d1 d2 d3 d4
+reproduce-chen: c4 c2 c3 c1
+
+d1: budget  ## toy separation + NFE-vs-budget, accurate tol + recon check
+	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.run_budget_sweep \
+	  --seeds $(SEEDS) --budgets 25,50,100,200,500 --models NODE,ANODE-p1 \
+	  --geometry circles --train_tol 1e-6 --eval_tol 1e-6 \
+	  --results_dir results/budget_circles
+
+d2:  ## Dupont Fig 9: remove the angular wedge [0, pi/5] from TRAINING only
+	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.run_missing_slice \
+	  --geometry spheres --seeds $(SEEDS) --epochs 100 \
+	  --train_tol 1e-6 --eval_tol 1e-6
+
+d3:  ## matched-param NODE vs ANODE on MNIST + the faithful-NFE re-measurement
+	$(PY) -m scripts.run_d3_anode_mnist --seeds $(SEEDS) --epochs 8 \
+	  --batch_size 256 --eval_tols 1e-3,1e-5,1e-6,1e-7
+	$(PY) -m scripts.run_d3_faithful_nfe --seeds $(SEEDS) --epochs 8
+
+d4:  ## matched-param NODE vs ANODE on CIFAR-10 (resumable; see --fresh)
+	$(PY) -m scripts.run_d4_anode_cifar --seeds $(SEEDS) --epochs 10 \
+	  --batch_size 256 --eval_tols 1e-3,1e-5,1e-6,1e-7
+
+d8:  ## 1-D crossing flow: NODE cannot cross, ANODE can (tolerance ladder + recon)
+	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.train_crossing_flow \
+	  --seeds $(SEEDS) --epochs 300 --train_tol 1e-5 --eval_tols 1e-3,1e-5,1e-6,1e-7
+
+c1:  ## Chen Fig 3a-b: adaptive x tolerance and fixed-step x step count
+	$(PY) -m scripts.run_c1_solver_dynamics --seeds $(SEEDS)
+
+c2: c2-guard  ## bwd/fwd NFE ratio across tolerance, both fields + MNIST
+	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.c2_recharacterise --seeds $(SEEDS)
+	$(PY) -m scripts.c2_mnist_ratio
+
+c3:  ## NFE growth over training, and the stiffening mechanism behind it
+	$(PY) -m scripts.run_mnist_nfe --seeds $(SEEDS) --epochs 10
+	$(PY) -m scripts.run_mnist_stiffening --seeds $(SEEDS) --epochs 8
+
+c4:  ## O(1) memory as ODE-Net NFE rises: adjoint flat vs direct backprop rising
+	$(PY) -m scripts.c4_memory_vs_nfe --seeds 0,1,2
+
+budget:  ## D1 on the spheres geometry (the committed results/budget/)
+	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.run_budget_sweep \
+	  --seeds $(SEEDS) --budgets 25,50,100,200,500,1000 --models NODE,ANODE-p1 \
+	  --train_tol 1e-6 --eval_tol 1e-6
+
+c2-guard:  ## C2 tolerance guard: the ratio is a tolerance axis, not one number
+	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.c2_tolerance_guard --geometry spheres --epochs 100 --seed 0
+	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.c2_tolerance_guard --geometry circles --epochs 100 --seed 0 \
+	  --results_dir results/c2_circles
+
+# --------------------------------------------------------------------------
+# COURSEWORK — the pre-replication experiments. NOT part of the ReScience
+# submission and not cited by it; kept so the conversion is auditable.
+# The factorial's verdict is WITHDRAWN (loose-tolerance artifact, DEVIATIONS A1/A3).
+# --------------------------------------------------------------------------
+coursework: mnist-baselines table2 table3 solver-ablation
 
 mnist-baselines:
 	@for s in $$(echo $(SEEDS) | tr ',' ' '); do \
@@ -106,24 +222,10 @@ fig3:
 	$(PY) -m scripts.train_continuous_mnist --network_type cnn --epochs 10 \
 	  --hidden_dim 256 --lr 1e-3 --seed 0 --tol-diagnostic
 
-d8:  # Dupont Fig 3 / Prop 1: 1-D crossing-flow demo (NODE fails, ANODE succeeds)
-	$(PY) -m scripts.train_crossing_flow --seeds $(SEEDS) --epochs 150
-
-factorial:  # A1/A3: geometry x stem x head, >=5 seeds, 500 ep (paper budget), NFE logged
+factorial:  # WITHDRAWN verdict; kept for provenance (DEVIATIONS A1/A3)
 	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.run_stem_geometry_factorial \
 	  --seeds $(SEEDS) --epochs 500 --max_num_steps 1500 --time_budget_s 360 --with_mlp_head
 	$(PY) -m scripts.print_factorial_table
-
-budget:  # A5/Dupont Fig 6: NODE vs ANODE, budget-dependent NFE growth, ACCURATE tol + recon check
-	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.run_budget_sweep \
-	  --seeds $(SEEDS) --budgets 25,50,100,200,500,1000 --models NODE,ANODE-p1 \
-	  --train_tol 1e-6 --eval_tol 1e-6
-	$(PY) -m scripts.plot_budget_sweep
-
-c2-guard:  # C2: bwd/fwd NFE ratio across a tolerance axis + reconstruction check (guards the headline)
-	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.c2_tolerance_guard --geometry spheres --epochs 100 --seed 0
-	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.c2_tolerance_guard --geometry circles --epochs 100 --seed 0 \
-	  --results_dir results/c2_circles
 
 # --------------------------------------------------------------------------
 # Environment / container.
