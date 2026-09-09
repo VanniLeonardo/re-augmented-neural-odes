@@ -207,8 +207,18 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-# Local datasets (auto-downloaded)
-data/MNIST/
+# Local datasets (auto-downloaded). NOTHING under data/ is committed except the
+# loader modules themselves -- the dataloaders fetch MNIST/CIFAR-10 on demand.
+# Stated as a whitelist so a newly-added dataset directory cannot slip in
+# unignored (which is how 178 MB of extracted CIFAR-10 nearly got committed).
+data/**
+!data/*.py
+
+# Model checkpoints / weight dumps are regenerable bulk, never canonical artifacts.
+*.pt
+*.pth
+*.ckpt
+checkpoints/
 
 # Temporary local test scripts
 test_mnist_loader.py
@@ -218,6 +228,11 @@ wandb/
 
 digest.txt
 plots/
+
+# Coursework deliverable, not a ReScience submission artifact (3.6 MB binary).
+# Kept on disk for the co-author writing the paper; deliberately not committed.
+# Reverse with: git add -f Final_Report_Group5.pdf
+Final_Report_Group5.pdf
 # Experiment outputs.
 # Canonical result artifacts (committed CSV/JSON that figures are built from) are
 # tracked; bulk/verbose outputs are ignored. This keeps the results->figure
