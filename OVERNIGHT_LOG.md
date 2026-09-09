@@ -535,3 +535,24 @@ seeds, every row carrying recon_ok + hardware. CPU (1-D toy; keeps the GPU free 
   raw numbers and flag.
 - Reporting tol: loosest tol where BOTH arms are recon_ok 5/5, same rule as D3/D4. The 1e-3 rung
   is included deliberately so the old, non-integrating number stays visible as data.
+
+## [3] D8 RESULT (5 seeds, ladder, recon-checked; `results/crossing/`, `figures/crossing/`)
+RAW median over 5 seeds (MSE | fwd NFE | recon_ok fraction):
+| eval_tol | NODE MSE | NODE NFE | NODE recon | ANODE-p1 MSE | ANODE NFE | ANODE recon |
+|---|---|---|---|---|---|---|
+| 1e-3 | 1.0004 | 56 | **0/5** | 0.0007 | 26 | **0/5** |
+| 1e-5 | 1.0002 | 92 | **0/5** | 0.0007 | 50 | 5/5 |
+| 1e-6 | 1.0002 | 158 | **3/5** | 0.0007 | 128 | 5/5 |
+| **1e-7** | **1.0002** | **308** | **5/5** | **0.0007** | **272** | **5/5** |
+- **Loosest tol where BOTH arms are recon-faithful: 1e-7.** There: NODE MSE **1.0002**
+  [1.0000, 1.0003], ANODE-p1 **0.0007** [0.0001, 0.0013]. NFE 308 vs 272.
+- **Pre-declared refutation NOT met** (NODE 1.0002 ≥ 0.1; ANODE 0.0007 ≤ 0.1). No STOP trigger:
+  NODE sits *at* the Proposition-1 floor (1.0002 vs the predicted 1.0), never below it.
+- **The old committed number was measured in a non-integrating regime.** At 1e-3 the recon check
+  fails for **all 10 model-seeds**; the worst NODE seed reconstructs with **1.21e+01** relative
+  error (≈1200%). So the previously committed D8 row was not integrating the field at all.
+- **Scrutiny note (the conclusion was right for a reason we had not checked):** NODE MSE is
+  1.0002–1.0006 at *every* rung, so the D8 conclusion happens to be tolerance-robust — but it had
+  never been *established* faithfully, and robustness is a finding, not an assumption. The ANODE
+  arm is the one that moves: it is recon-faithful from 1e-5 while the NODE arm needs 1e-7, i.e.
+  the NODE's failing flow is also the stiffer one to integrate.
