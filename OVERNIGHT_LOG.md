@@ -633,3 +633,37 @@ RAW final epoch (median over 5 seeds):
   should also cache checkpoints (as C1 now does) so this never costs a full retrain again.
 - Inversion vs D3 worth noting: on CIFAR the **ANODE** arm is the one that fails recon at 1e-5
   (4/5) while NODE is 5/5 at every rung — the opposite of D3/MNIST, where NODE was 2/5 at 1e-5.
+
+## [2] C1 RESULT — solver dynamics, 5 seeds (`results/c1/`, `figures/c1/solver_dynamics.png`)
+5 seeds × (3 adaptive × 5 tols + 3 fixed-step × 8 step counts) = 195 rows, A100s, reference
+dopri8 @ 1e-8. RAW medians (adaptive):
+| solver | tol | rel_err | fwd NFE | bwd NFE | time ms | recon |
+|---|---|---|---|---|---|---|
+| bosh3 | 1e-1 → 1e-5 | 3.47e-1 → 1.71e-4 | 20 → 227 | 47 → 10,166 | 22.7 → 279 | 0/5 → 5/5 |
+| dopri5 | 1e-1 → 1e-5 | 2.08e-1 → 2.18e-4 | **26 → 20** → 38 → 68 → 116 | 74 → 3,248 | 27.4 → 127 | 0/5 → **3/5** |
+| dopri8 | 1e-1 → 1e-5 | 6.01e-3 → 3.49e-5 | 41 → 1,055 | 470 → 180,520 | 54.8 → 1,254 | 0/5 → 5/5 |
+- **R-C1a HOLDS** — error falls monotonically for all three adaptive solvers.
+- **R-C1b REFUTED, as pre-declared.** dopri5 NFE goes **26 → 20** from tol 1e-1 to 1e-2. The
+  pre-declared condition was "REFUTED if NFE is flat or decreasing", and it decreases. **Reporting
+  the refutation as it stands — not restating the claim to make it pass.** Where it lives: the
+  single violating step is dopri5's two loosest rungs, **both recon_ok 0/5** (the flow is not
+  being integrated there at all, so the adaptive controller's step choice is not meaningful).
+  Restricted to recon-faithful rows the cost is monotone (bosh3 112→227, dopri8 379→1,055), but
+  dopri5 has only ONE faithful rung so monotonicity cannot be tested for it. The honest statement
+  is: **Chen's cost-rises claim holds where the solver is actually integrating, and is violated
+  at loose tolerance where it is not.**
+- **R-C1c HOLDS** — Spearman ρ(time, NFE) = 0.983–0.992 pooled per solver.
+- **Hardware confound CAUGHT by the per-row `hardware` column** (this is why it is recorded): the
+  SLURM array scattered seeds across **two different A100 MIG slice sizes** — 4g.40gb (seeds 0,1,4)
+  and 3g.40gb (seeds 2,3) — so pooled wall-clock mixes machines. Re-checked **within** each
+  hardware group, ρ = 0.991–0.997, i.e. *tighter* than pooled. The confound weakened the
+  conclusion rather than creating it; R-C1c survives. Now encoded as an automatic check in
+  `scripts/c1_report.py` rather than left as a note.
+- **STOP-check clean:** no higher-order solver is systematically worse at matched NFE.
+- **Nominal tolerance is NOT comparable across solvers** (worth a paper sentence): at tol 1e-5,
+  dopri5 spends 116 NFE and lands at recon_rel 9.8e-3 (3/5 pass, right at the 1e-2 threshold),
+  while bosh3 spends 227 NFE for 1.1e-3 and dopri8 spends 1,055 for 1.6e-3. The same *requested*
+  tolerance buys very different *actual* integration accuracy. `recon_ok` is the comparable axis;
+  the tolerance number is not.
+- Fixed-step arm behaves exactly as numerical analysis predicts: NFE = steps × stages (euler 1×,
+  midpoint 2×, rk4 4×) and error falls at the method's order (rk4 7.1e-1 → 7.3e-6 over 1→128 steps).
