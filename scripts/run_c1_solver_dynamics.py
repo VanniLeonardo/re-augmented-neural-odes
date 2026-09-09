@@ -124,11 +124,24 @@ def run_seed(seed: int, cfg, device) -> list[dict]:
     model = ConvODENet(in_channels=1, num_filters=cfg.filters, num_classes=10,
                        solver_type="dopri5").to(device)
     model.ode_block.atol = model.ode_block.rtol = cfg.train_tol
-    opt = torch.optim.Adam(model.parameters(), lr=cfg.lr)
-    crit = nn.CrossEntropyLoss()
-    for ep in range(cfg.epochs):
-        m = train_epoch(model, train_loader, opt, crit, device)
-        print(f"  [seed {seed}] epoch {ep+1}/{cfg.epochs} train_acc {m['accuracy']:.4f}", flush=True)
+
+    # Train once per seed and cache. The sweep is an EVALUATION sweep, so re-running or
+    # re-tuning it must not cost another full training run (and a reviewer re-making the
+    # figure should not have to retrain either).
+    ckpt = Path(cfg.ckpt_dir) / f"c1_seed{seed}_f{cfg.filters}_e{cfg.epochs}.pt"
+    if ckpt.exists() and not cfg.retrain:
+        model.load_state_dict(torch.load(ckpt, map_location=device))
+        print(f"  [seed {seed}] loaded cached model {ckpt.name}", flush=True)
+    else:
+        opt = torch.optim.Adam(model.parameters(), lr=cfg.lr)
+        crit = nn.CrossEntropyLoss()
+        for ep in range(cfg.epochs):
+            m = train_epoch(model, train_loader, opt, crit, device)
+            print(f"  [seed {seed}] epoch {ep+1}/{cfg.epochs} train_acc {m['accuracy']:.4f}",
+                  flush=True)
+        ckpt.parent.mkdir(parents=True, exist_ok=True)
+        torch.save(model.state_dict(), ckpt)
+        print(f"  [seed {seed}] cached model -> {ckpt}", flush=True)
 
     model.eval()
     xb, yb = next(iter(test_loader))
@@ -141,6 +154,15 @@ def run_seed(seed: int, cfg, device) -> list[dict]:
 
     # Reference endpoint: the most accurate integration we can afford. Everything below
     # is measured against this, so the error axis is the integrator's, not the model's.
+    if cfg.ref_bench:
+        print(f"  [seed {seed}] reference benchmark (dopri8, batch {cfg.eval_batch}):", flush=True)
+        for rt in [float(x) for x in cfg.ref_bench.split(",") if x.strip()]:
+            tb = time.perf_counter()
+            with torch.no_grad():
+                _, nfe_b = _solve(model.ode_func, h, t, "dopri8", rt, None)
+            print(f"    tol {rt:.0e}: NFE {nfe_b:7d} | {time.perf_counter()-tb:8.1f}s", flush=True)
+        return []
+
     t_ref = time.perf_counter()
     with torch.no_grad():
         ref, ref_nfe = _solve(model.ode_func, h, t, "dopri8", cfg.ref_tol, None)
@@ -190,6 +212,12 @@ def main() -> None:
     p.add_argument("--repeats", type=int, default=5)
     p.add_argument("--recon_thresh", type=float, default=1e-2)
     p.add_argument("--results_dir", default="results/c1")
+    p.add_argument("--ckpt_dir", default="results/c1/ckpt",
+                   help="trained models are cached here so the evaluation sweep can be "
+                        "re-run without retraining (gitignored)")
+    p.add_argument("--retrain", action="store_true", help="ignore any cached model")
+    p.add_argument("--ref_bench", default="",
+                   help="time the dopri8 reference at these tols and exit (design probe)")
     p.add_argument("--tag", default="", help="suffix for per-seed shards (HPC array jobs)")
     cfg = p.parse_args()
 
