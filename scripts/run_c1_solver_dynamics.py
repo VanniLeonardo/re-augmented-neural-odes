@@ -141,10 +141,11 @@ def run_seed(seed: int, cfg, device) -> list[dict]:
 
     # Reference endpoint: the most accurate integration we can afford. Everything below
     # is measured against this, so the error axis is the integrator's, not the model's.
+    t_ref = time.perf_counter()
     with torch.no_grad():
         ref, ref_nfe = _solve(model.ode_func, h, t, "dopri8", cfg.ref_tol, None)
     print(f"  [seed {seed}] reference dopri8 @ {cfg.ref_tol:.0e}: NFE {ref_nfe} | "
-          f"test_acc {test_acc:.4f}", flush=True)
+          f"{time.perf_counter()-t_ref:.1f}s | test_acc {test_acc:.4f}", flush=True)
 
     tols = [float(x) for x in cfg.tols.split(",") if x.strip()]
     steps = [int(x) for x in cfg.steps.split(",") if x.strip()]
@@ -177,14 +178,14 @@ def main() -> None:
     p.add_argument("--seeds", default="0,1,2,3,4")
     p.add_argument("--epochs", type=int, default=5)
     p.add_argument("--batch_size", type=int, default=128)
-    p.add_argument("--eval_batch", type=int, default=128)
+    p.add_argument("--eval_batch", type=int, default=64)
     p.add_argument("--filters", type=int, default=64)
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--train_tol", type=float, default=1e-3)
-    p.add_argument("--ref_tol", type=float, default=1e-10,
+    p.add_argument("--ref_tol", type=float, default=1e-9,
                    help="reference integration; 2+ orders tighter than the tightest "
                         "swept tol, so the error axis is not reference-limited")
-    p.add_argument("--tols", default="1e-1,1e-2,1e-3,1e-4,1e-5,1e-6,1e-7")
+    p.add_argument("--tols", default="1e-1,1e-2,1e-3,1e-4,1e-5,1e-6")
     p.add_argument("--steps", default="1,2,4,8,16,32,64,128")
     p.add_argument("--repeats", type=int, default=5)
     p.add_argument("--recon_thresh", type=float, default=1e-2)
