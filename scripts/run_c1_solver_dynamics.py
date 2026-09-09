@@ -130,7 +130,7 @@ def run_seed(seed: int, cfg, device) -> list[dict]:
     # figure should not have to retrain either).
     ckpt = Path(cfg.ckpt_dir) / f"c1_seed{seed}_f{cfg.filters}_e{cfg.epochs}.pt"
     if ckpt.exists() and not cfg.retrain:
-        model.load_state_dict(torch.load(ckpt, map_location=device))
+        model.load_state_dict(torch.load(ckpt, map_location=device, weights_only=True))
         print(f"  [seed {seed}] loaded cached model {ckpt.name}", flush=True)
     else:
         opt = torch.optim.Adam(model.parameters(), lr=cfg.lr)
