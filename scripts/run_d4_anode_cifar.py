@@ -43,14 +43,72 @@ def build(spec, tol):
     return DupontConvODE(augment=aug, k=k, num_classes=10, hw=32, in_channels=3, atol=tol, rtol=tol)
 
 
+# Stable column order. `hardware` is last so a pre-resume CSV (written before this
+# column existed) can be upgraded by backfilling a single field.
+FIELDS = ["model", "params", "seed", "epoch", "train_tol", "eval_tol", "train_acc",
+          "train_loss", "test_acc", "test_loss", "train_fwd_nfe", "eval_fwd_nfe",
+          "recon_rel", "recon_ok", "gap_acc", "epoch_s", "hardware"]
+
+
 def _append(path: Path, row: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     exists = path.exists()
     with path.open("a", newline="") as h:
-        w = csv.DictWriter(h, fieldnames=list(row.keys()))
+        w = csv.DictWriter(h, fieldnames=FIELDS)
         if not exists:
             w.writeheader()
         w.writerow(row)
+
+
+def _read_rows(path: Path) -> list[dict]:
+    if not path.exists():
+        return []
+    with path.open(newline="") as h:
+        return list(csv.DictReader(h))
+
+
+def _rewrite(path: Path, rows: list[dict], hardware: str) -> None:
+    """Rewrite the trajectory with the canonical header, backfilling `hardware` on rows
+    written before that column existed."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="") as h:
+        w = csv.DictWriter(h, fieldnames=FIELDS)
+        w.writeheader()
+        for r in rows:
+            w.writerow({k: r.get(k, "") if k != "hardware" else (r.get("hardware") or hardware)
+                        for k in FIELDS})
+
+
+def complete_pairs(rows: list[dict], epochs: int, ladder: list[float]) -> set:
+    """(model, seed) pairs that already hold EVERY (epoch, eval_tol) cell.
+
+    Resume keys on the completed *seed*, never on (model, seed, epoch). Training is
+    sequential and no checkpoint is saved, so a seed stopped at epoch 9 cannot be
+    resumed at epoch 10 -- there is no model state to resume from. Keying on epoch
+    would train a fresh random init for one epoch and record it as the continuation of
+    a 9-epoch run. Partial seeds are therefore dropped and re-run from scratch.
+    """
+    want = {(e, t) for e in range(1, epochs + 1) for t in ladder}
+    got: dict = {}
+    for r in rows:
+        try:
+            key = (r["model"], int(r["seed"]))
+            got.setdefault(key, set()).add((int(r["epoch"]), float(r["eval_tol"])))
+        except (KeyError, ValueError):
+            continue
+    return {k for k, v in got.items() if want <= v}
+
+
+def resume_trajectory(path: Path, epochs: int, ladder: list[float], hardware: str,
+                      fresh: bool = False):
+    """Prune `path` down to the rows of COMPLETE (model, seed) pairs and return
+    (done, n_prior, n_kept). Rows of a seed that died mid-training are dropped so the
+    seed is re-run from scratch; finished seeds are never re-run and never duplicated."""
+    prior = [] if fresh else _read_rows(path)
+    done = complete_pairs(prior, epochs, ladder)
+    keep = [r for r in prior if (r["model"], int(r["seed"])) in done]
+    _rewrite(path, keep, hardware)
+    return done, len(prior), len(keep)
 
 
 @torch.no_grad()
@@ -87,6 +145,8 @@ def main():
     p.add_argument("--results_dir", default="results/d4")
     p.add_argument("--check_params", action="store_true")
     p.add_argument("--probe", action="store_true")
+    p.add_argument("--fresh", action="store_true",
+                   help="discard any existing trajectory and start over (default: resume)")
     args = p.parse_args()
 
     if args.check_params:
@@ -109,12 +169,24 @@ def main():
     t_start = time.perf_counter()
     tag = "probe" if args.probe else "d4"
     traj = Path(args.results_dir) / f"{tag}_trajectory.csv"
-    if traj.exists():
-        traj.unlink()
     ladder = [float(t) for t in args.eval_tols.split(",")] if args.eval_tols else [args.eval_tol]
+    hardware = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu"
+
+    # Resume. Keep every row belonging to a COMPLETE (model, seed); drop rows of a seed
+    # that died mid-training (they cannot be continued -- see complete_pairs) so it is
+    # re-run from scratch. Without this the script used to unlink() the trajectory and
+    # silently destroy finished seeds.
+    done, n_prior, n_kept = resume_trajectory(traj, args.epochs, ladder, hardware, args.fresh)
+    if n_prior:
+        print(f"[resume] {n_prior} prior rows | complete seeds: "
+              f"{sorted(done) if done else 'none'} | kept {n_kept} | dropped "
+              f"{n_prior - n_kept} orphan row(s) from partial seed(s)", flush=True)
 
     for spec in models:
         for seed in seeds:
+            if (spec, seed) in done:
+                print(f"[skip] {spec} seed {seed} already complete", flush=True)
+                continue
             set_seed(seed)
             tr, te = get_cifar10_dataloaders(batch_size=args.batch_size, seed=seed)
             model = build(spec, args.tol).to(device)
@@ -135,7 +207,8 @@ def main():
                                    "test_acc": em["accuracy"], "test_loss": em["loss"],
                                    "train_fwd_nfe": tm.get("forward_nfe_mean", float("nan")),
                                    "eval_fwd_nfe": nfe, "recon_rel": rel, "recon_ok": ok,
-                                   "gap_acc": tm["accuracy"] - em["accuracy"], "epoch_s": round(dt, 1)})
+                                   "gap_acc": tm["accuracy"] - em["accuracy"], "epoch_s": round(dt, 1),
+                                   "hardware": hardware})
                 el = (time.perf_counter() - t_start) / 3600
                 print(f"[{spec} s{seed} e{epoch+1}] test {em['accuracy']:.4f} | train NFE "
                       f"{tm.get('forward_nfe_mean',0):.1f} | {dt:.0f}s | elapsed {el:.2f}h", flush=True)
