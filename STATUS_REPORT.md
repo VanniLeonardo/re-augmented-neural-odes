@@ -1,5 +1,12 @@
 # STATUS_REPORT.md — orientation audit, 2026-09-09
 
+> **⚠️ SUPERSEDED — point-in-time audit, 2026-09-09.** This was the orientation report
+> written before the follow-up work. Several findings below have since been fixed and no
+> longer describe the repository: D4/CIFAR-10 and C1 are now complete, D8 is recon-checked,
+> the README documents the replication, and `make figures` / `make reproduce-all` are wired
+> up. Kept as the record of the state the conversion was picked up in. For current state
+> see `README.md`, `OVERNIGHT_LOG.md` and `DEVIATIONS.md`.
+
 Read-only session. No experiments run, no code changed, no commits. Every number below was
 read off the repository or produced by re-running a committed *report* script over committed
 CSVs; nothing was re-trained.

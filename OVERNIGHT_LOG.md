@@ -695,3 +695,16 @@ accuracy is measured at. Same defect in D3. Closing it by measurement, not argum
 - Hardware: A100 (HPC), per-seed array shards (`--tag`), every row records its GPU. The existing
   `results/d3/d3_trajectory.csv` and `results/d4/d4_trajectory.csv` are NOT overwritten — shards
   land beside them and are merged only after the checks above are evaluated.
+
+## [4] PACKAGING — clean-room container verification (the check the last audit could not make)
+The previous container check reused cached Docker layers and a surviving conda env, so it
+proved "the existing environment works", not "a reviewer can build it". Done properly now:
+- `docker build --no-cache` from scratch: **succeeds** (exit 0). The pinned stack resolves today;
+  note the build pulls numpy 2.4.6 as a torch dependency and then correctly downgrades it to the
+  pinned **2.4.3**, so the pin is doing real work.
+- `docker run` (acceptance gate, `make smoke`) in the fresh image: **57 passed, 1 skipped**, exit 0.
+- `docker run ... make figures` in the fresh image: **all 18 figures rebuilt from the committed
+  CSVs**, exit 0. This is the reviewer's actual path — clone, build, regenerate every figure —
+  and it now works end to end with no GPU, no training and no accounts.
+- Determinism spot-check: `results/c2/c2_surface.csv` regenerates **byte-identically**, so the
+  figure pipeline does not perturb committed artifacts.
