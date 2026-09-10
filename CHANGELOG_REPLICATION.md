@@ -11,6 +11,48 @@ Format: newest first. Each entry: *what changed*, *why*, *scope tag* (`infra` / 
 
 ---
 
+## Phase 2 — close-out: D4 finished, C1 built, D8 made faithful, packaging (2026-09-09 → 2026-09-10)
+
+### infra
+- **Git safety.** `data/` became a whitelist (`data/**` + `!data/*.py`) after 178 MB of extracted
+  CIFAR-10 sat unignored; checkpoints ignored; coursework PDF ignored. 17 unpushed commits pushed.
+- **D4 resume logic** (`run_d4_anode_cifar.py`). The harness `unlink()`ed its CSV on start, so a
+  restart destroyed finished seeds. Resume now keys on the COMPLETE (model, seed) — a seed that died
+  mid-training cannot be continued without a checkpoint and is re-run from scratch.
+  `tests/test_d4_resume.py` (9 tests).
+- **`hardware` column** on D3/D4/D8/C1 rows. It caught a real confound (C1 seeds scattered across
+  two A100 MIG slice sizes).
+- **`--tag` per-seed shards** for D3/D4/C1 so SLURM array tasks never race on one CSV; the
+  report scripts merge shards and refuse duplicated cells.
+- **SLURM `set -u` fix** in all five cluster scripts: conda's activate.d hooks reference unbound
+  variables, so every job aborted at `conda activate`.
+- **Loud dataset errors** (`data/dataloaders.py`): yann.lecun.com now 404s and torchvision falls
+  back to an S3 mirror silently; a fetch failure now names the directory to populate.
+- **Makefile**: `make figures` rebuilds all figures from committed CSVs (no GPU); per-claim run
+  targets; `reproduce-all` now runs the replication instead of the coursework.
+- **README** rewritten around the replication and the `recon_ok` discipline.
+- **Clean-room container** verified: `docker build --no-cache`, then `make smoke` and
+  `make figures` inside the fresh image.
+
+### experiment
+- **D4 (CIFAR-10) completed** via resume, then re-run with accuracy re-measured on the ladder.
+- **D3 re-run** with the same accuracy ladder. At the 1e-3 train tolerance both image experiments
+  fail recon on every seed; accuracy is nonetheless tolerance-robust (≤0.11 pp mean shift).
+  Run 2 (A100) canonical; run 1 (RTX 3090) kept under `results/d{3,4}/run1_rtx3090/`.
+- **D8** re-measured on a tolerance ladder with a recon check; the committed 1e-3 result had failed
+  recon on all 10 model-seeds. Conclusion unchanged.
+- **C1 (Chen Fig 3a–b)** built from nothing: `run_c1_solver_dynamics.py`, 5 seeds, reference
+  dopri8 @ 1e-8. Monotone-cost check refuted as pre-declared (at non-integrating tolerances).
+
+### report
+- `scripts/image_table.py`: the D3/D4 headline rule in one place (loosest tolerance where both
+  arms pass; accuracy quoted at that tolerance; R-ACC1/R-ACC2).
+- `scripts/d8_report.py`, `scripts/c1_report.py` added; `d3_report.py`/`d4_report.py` rewritten.
+- Corrected: committed D3 accuracies were medians printed as mean ± sd; now mean ± sd throughout.
+- `DEVIATIONS.md`: B3 (D4) added; B2 updated; stale C2/C3/§D-D2 statuses updated with dated notes.
+
+---
+
 ## Phase 1 — FALSIFICATION: the factorial's "flat NFE / no NODE-failure" was a loose-tolerance artifact; accurate-tolerance budget sweep reproduces Dupont (2026-07-14)
 
 ### experiment + report (supersedes the 2026-07-13 conclusion below)

@@ -59,6 +59,14 @@ The clearest case: the 1-D crossing-flow result was originally measured at `atol
 where the check fails for all 10 model-seeds and the worst reconstructs with **1200%**
 relative error. The conclusion survived re-measurement, but it had not been *established*.
 
+A second example, in the other direction: at the `1e-3` tolerance used to *train* the image
+models, the check fails on **every** trained model — 0/5 seeds, both arms, MNIST and CIFAR-10.
+So the image accuracies were first measured in a regime that does not integrate the field.
+Re-measured at a tolerance that passes, they move by at most **0.11 pp** on average
+(**0.37 pp** for the worst seed): classification accuracy is robust to integration error,
+NFE is not. Both are now reported at a checked tolerance (`make fig-d3`, `make fig-d4` print
+the comparison, and `figures/d{3,4}/acc_vs_tol.png` show it).
+
 ---
 
 ## What is replicated
@@ -74,8 +82,8 @@ with its pre-declared refutation condition, are in
 | **D8** | A 1-D NODE flow is order-preserving and cannot represent the crossing map; ANODE can (Prop. 1, Fig. 3) | Reproduced. At 1e-7 (both arms 5/5 `recon_ok`): NODE MSE **1.0002**, ANODE-p1 **0.0007**. NODE sits *at* the theoretical floor of 1.0, not below it. | `make fig-d8` |
 | **D1** | NODE NFE grows with training budget; ANODE stays flat and is cheaper (§4.2, Fig. 6) | Reproduced on both geometries. Spheres @50 ep: NODE NFE 218 vs ANODE 170; growth ×1.74 vs ×1.04 over 25→500 epochs. | `make fig-d1` |
 | **D2** | NODE has a large generalization gap across an unobserved angular slice; ANODE does not (§5.1, Fig. 9) | Reproduced. Held-out slice accuracy NODE **0.619** vs ANODE **1.000**; slice loss 6.089 vs 0.000. Wedge `[0, π/5]` verified against the paper text. | `make fig-d2` |
-| **D3** | Matched-param ANODE beats NODE on MNIST and is cheaper (Table 1) | Reproduced. ANODE **98.18 ± 0.29%** vs Dupont's 98.2 ± 0.1 (match); NODE **94.53 ± 0.44%** vs 96.4 ± 0.5 (**undershoots ~1.9 pp** — partial). At the loosest common faithful tol (1e-7) ANODE is **2.1× cheaper** in NFE. | `make fig-d3` |
-| **D4** | Same on CIFAR-10 (Table 1) | Reproduced. NODE **53.59 ± 0.50%** vs Dupont's 53.7 ± 0.2 (match within noise); ANODE **59.34 ± 0.70%** vs 60.6 ± 0.4 (**~1.3 pp low** — partial). ANODE 1.24× cheaper in NFE at the faithful tol (1e-6). | `make fig-d4` |
+| **D3** | Matched-param ANODE beats NODE on MNIST and is cheaper (Table 1) | Reproduced; **partial on NODE**. At the loosest tolerance where both arms pass the check (1e-6): ANODE **98.05 ± 0.19%** vs Dupont 98.2 ± 0.1 (match); NODE **94.16 ± 0.44%** vs 96.4 ± 0.5 (**~2.2 pp low** — and ~2.1 pp low in an independent first run, so a consistent undershoot). ANODE is **1.65–2.10×** cheaper in NFE across faithful tolerances and runs. | `make fig-d3` |
+| **D4** | Same on CIFAR-10 (Table 1) | Reproduced; **partial on ANODE**. At 1e-5 (both arms pass): NODE **53.69 ± 0.81%** vs Dupont 53.7 ± 0.2 (match); ANODE **60.04 ± 0.94%** vs 60.6 ± 0.4 (**0.6 pp low**; an independent first run gave 59.34, 1.3 pp low — the miss is within our own run-to-run spread, so it is reported as a small undershoot, not a match). ANODE is **1.24–1.93×** cheaper in NFE across faithful tolerances and runs. | `make fig-d4` |
 
 ### Chen et al. 2018 — secondary (C1–C4 only)
 
@@ -111,16 +119,16 @@ make reproduce-chen      # c4 c2 c3 c1
 make d4                  # or any single claim
 ```
 
-Per-claim costs (`make help`). D4 is measured; the others are estimates on the hardware
-below and will differ on yours.
+Per-claim costs (`make help`). D3 and D4 are measured (A100 MIG slice, serial over 5
+seeds); the others are estimates on the hardware below and will differ on yours.
 
 | Target | What | Cost | Device |
 |---|---|---|---|
 | `d8` | 1-D crossing flow | ~5 min | CPU |
 | `d1` | Toy separation / NFE vs budget | ~2 h | CPU |
 | `d2` | Missing-slice generalisation | ~1–2 h | CPU |
-| `d3` | Matched-param MNIST + faithful NFE | ~1.5 h | GPU |
-| `d4` | Matched-param CIFAR-10 | **1.9 h (measured)** | GPU |
+| `d3` | Matched-param MNIST | **1.9 h serial (measured)** | GPU |
+| `d4` | Matched-param CIFAR-10 | **4.3 h serial (measured)** | GPU |
 | `c1` | Solver dynamics | ~3.5 h serial | GPU |
 | `c2` | bwd/fwd NFE vs tolerance | ~1–2 h | mixed |
 | `c3` | NFE growth + stiffening | ~3 h | GPU |
@@ -128,7 +136,9 @@ below and will differ on yours.
 
 **Hardware the committed results were produced on.** Most: **NVIDIA RTX 3090 (24 GB)**,
 AMD Ryzen 7 7700X (16 threads), 62 GB RAM, driver 595, CUDA 12.1, Python 3.11.15,
-torch 2.5.1. C1 ran on **A100 80GB PCIe MIG slices** on a SLURM cluster. **Every result
+torch 2.5.1. C1 and the canonical D3/D4 runs ran on **A100 80GB PCIe MIG slices** on a
+SLURM cluster; the first D3/D4 runs (RTX 3090) are kept under `results/d{3,4}/run1_rtx3090/`
+as replicates and printed by the report scripts. **Every result
 row records the GPU it ran on** in a `hardware` column — this is not decoration: it caught
 a real confound, when a SLURM array scattered C1's seeds across two different MIG slice
 sizes, making pooled wall-clock incomparable (the timing claim was re-checked within each

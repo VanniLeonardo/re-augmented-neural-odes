@@ -708,3 +708,50 @@ proved "the existing environment works", not "a reviewer can build it". Done pro
   and it now works end to end with no GPU, no training and no accounts.
 - Determinism spot-check: `results/c2/c2_surface.csv` regenerates **byte-identically**, so the
   figure pipeline does not perturb committed artifacts.
+
+## [4] D3 + D4 ACCURACY-FAITHFULNESS RESULT (5 seeds each, A100; shards in `results/d3/`, `results/d4/`)
+All 10 array tasks COMPLETED exit 0 (D4 47–60 min/seed, D3 19–25 min/seed); row counts exact
+(D4 2×10×4 = 80/seed, D3 2×8×4 = 64/seed). Internal check: at the 1e-3 rung `test_acc_at_tol`
+re-computes `test_acc` — max difference **0.0**. RAW final epoch, accuracy RE-MEASURED at each rung
+(mean ± sd, ddof=1):
+| | tol | NODE recon | NODE acc | NODE NFE | ANODE recon | ANODE acc | ANODE NFE |
+|---|---|---|---|---|---|---|---|
+| D4 | 1e-3 (train) | **0/5** | 53.68 ± 0.85 | 26 | **0/5** | 60.15 ± 0.91 | 20 |
+| D4 | **1e-5** | 5/5 | **53.69 ± 0.81** | 62 | 5/5 | **60.04 ± 0.94** | 50 |
+| D4 | 1e-6 / 1e-7 | 5/5 | 53.70 / 53.69 | 116 / 272 | 5/5 | 60.04 / 60.05 | 92 / 206 |
+| D3 | 1e-3 (train) | **0/5** | 94.18 ± 0.39 | 38 | **0/5** | 98.05 ± 0.21 | 26 |
+| D3 | 1e-5 | 3/5 | 94.16 | 68 | 4/5 | 98.05 | 50 |
+| D3 | **1e-6** | 5/5 | **94.16 ± 0.44** | 152 | 5/5 | **98.05 ± 0.19** | 92 |
+| D3 | 1e-7 | 5/5 | 94.16 | 428 | 5/5 | 98.05 | 224 |
+- **The flag was real:** the 1e-3 train tolerance fails recon on **0/5 seeds in all four arm ×
+  experiment cells**. Every previously committed D3/D4 accuracy was measured in a non-integrating
+  regime.
+- **R-ACC1 HOLDS** (prediction on record held): accuracy at the loosest faithful tol differs from
+  accuracy at 1e-3 by D4 NODE +0.012 / ANODE −0.108 pp, D3 NODE −0.024 / ANODE −0.008 pp; worst
+  single seed 0.37 pp. Accuracy is robust to integration error; NFE is not. Same shape as D8:
+  the answer was right, but it had not been established.
+- **R-ACC2 HOLDS:** ANODE − NODE gap at the faithful tol = **+6.35 pp** (D4), **+3.89 pp** (D3).
+  Pre-declared refutation not met in either: ANODE ≥ NODE accuracy and ANODE < NODE NFE.
+- **vs Dupont (at the faithful tol):** D4 NODE 53.69 vs 53.7 (−0.01); D4 ANODE 60.04 vs 60.6
+  (−0.56); D3 NODE 94.16 vs 96.4 (−2.24); D3 ANODE 98.05 vs 98.2 (−0.15). No STOP trigger: the
+  D4 NODE agreement did not move away from Dupont — it is not a loose-tolerance coincidence.
+- **Scrutiny — D4 ANODE moved +0.70 pp between runs** (run 1 RTX 3090: 59.34 ± 0.79; run 2 A100:
+  60.04 ± 0.94), toward Dupont. Difference ≈1.4σ of the difference of two 5-seed means: run-to-run
+  spread (seeds are not bit-reproducible across GPUs), not an improvement. **Not** upgrading
+  "partial" to "match" on a favourable re-run: reported as a 0.6–1.3 pp undershoot across two runs.
+- **Scrutiny — NFE ratios are less stable than accuracies.** D4 NODE NFE at 1e-7 was 410 in run 1
+  and 272 in run 2; the faithful tol itself moved (run 1: 1e-6, run 2: 1e-5 for D4; D3 run 1's
+  separate faithful re-measurement: 1e-7, run 2: 1e-6). ANODE is cheaper at **every** faithful rung
+  in **both** runs, but by **1.24–1.93× (D4)** and **1.65–2.10× (D3)**. Reported as ranges.
+- **Reporting slip found and corrected:** the committed D3 numbers 98.18 ± 0.29 / 94.53 ± 0.44 were
+  run-1 **medians** printed next to a standard deviation; run-1 means are 98.00 / 94.32. All image
+  accuracies are now mean ± sd (ddof=1), Dupont's convention. No conclusion changes.
+- **Decision — run 2 is canonical, run 1 kept as a replicate** (`results/d{3,4}/run1_rtx3090/`,
+  printed by the reports). Reason is methodological: run 2 is the only run whose accuracy is
+  measured at a recon-checked tolerance. It is NOT chosen because it lands closer to Dupont.
+- Hardware: both arrays again scattered across A100 MIG 3g.40gb and 4g.40gb slices. Irrelevant to
+  accuracy and NFE; `epoch_s` is not comparable across rows and is not used for any claim.
+- **Process note (near-miss):** the first submission queued jobs on a stale cluster checkout —
+  `git pull` aborted on untracked C1 shards, SLURM accepted the jobs anyway. Caught from the same
+  output and resubmitted at the right commit. A successful `sbatch` says nothing about which commit
+  was queued; always check `git log -1` on the cluster before submitting.

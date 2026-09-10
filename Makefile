@@ -38,8 +38,8 @@ help:
 	@echo ""
 	@echo "  d1  Toy separation / NFE growth vs budget   (~2 h, CPU)"
 	@echo "  d2  Missing-slice generalisation, Fig 9     (~1-2 h, CPU)"
-	@echo "  d3  Matched-param MNIST + faithful NFE      (~1.5 h, GPU)"
-	@echo "  d4  Matched-param CIFAR-10, Table 1         (1.9 h, GPU -- measured)"
+	@echo "  d3  Matched-param MNIST, Table 1           (1.9 h serial, A100 -- measured)"
+	@echo "  d4  Matched-param CIFAR-10, Table 1        (4.3 h serial, A100 -- measured)"
 	@echo "  d8  1-D crossing flow, Fig 3 / Prop 1       (~5 min, CPU)"
 	@echo "  c1  Solver dynamics, Fig 3a-b               (~3.5 h serial, GPU)"
 	@echo "  c2  bwd/fwd NFE ratio vs tolerance          (~1-2 h)"
@@ -144,14 +144,21 @@ d2:  ## Dupont Fig 9: remove the angular wedge [0, pi/5] from TRAINING only
 	  --geometry spheres --seeds $(SEEDS) --epochs 100 \
 	  --train_tol 1e-6 --eval_tol 1e-6
 
-d3:  ## matched-param NODE vs ANODE on MNIST + the faithful-NFE re-measurement
-	$(PY) -m scripts.run_d3_anode_mnist --seeds $(SEEDS) --epochs 8 \
-	  --batch_size 256 --eval_tols 1e-3,1e-5,1e-6,1e-7
-	$(PY) -m scripts.run_d3_faithful_nfe --seeds $(SEEDS) --epochs 8
+# D3/D4 write one shard per seed (`*_s<seed>.csv`), the layout fig-d3/fig-d4 read. The
+# ladder includes the 1e-3 TRAIN tolerance so the tolerance the accuracy is measured at is
+# itself recon-checked. results/d3_faithful/ and results/d{3,4}/run1_rtx3090/ are the
+# first run, kept as a replicate (provenance); they are not regenerated here.
+d3:  ## matched-param NODE vs ANODE on MNIST
+	@for s in $$(echo $(SEEDS) | tr ',' ' '); do \
+	  $(PY) -m scripts.run_d3_anode_mnist --seeds $$s --tag _s$$s --epochs 8 \
+	    --batch_size 256 --eval_tols 1e-3,1e-5,1e-6,1e-7 || exit 1; \
+	done
 
-d4:  ## matched-param NODE vs ANODE on CIFAR-10 (resumable; see --fresh)
-	$(PY) -m scripts.run_d4_anode_cifar --seeds $(SEEDS) --epochs 10 \
-	  --batch_size 256 --eval_tols 1e-3,1e-5,1e-6,1e-7
+d4:  ## matched-param NODE vs ANODE on CIFAR-10 (resumable per shard; see --fresh)
+	@for s in $$(echo $(SEEDS) | tr ',' ' '); do \
+	  $(PY) -m scripts.run_d4_anode_cifar --seeds $$s --tag _s$$s --epochs 10 \
+	    --batch_size 256 --eval_tols 1e-3,1e-5,1e-6,1e-7 || exit 1; \
+	done
 
 d8:  ## 1-D crossing flow: NODE cannot cross, ANODE can (tolerance ladder + recon)
 	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.train_crossing_flow \
