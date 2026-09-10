@@ -103,14 +103,44 @@ above and all of which exceeded the compute available to us.
 \label{sec:methods}
 
 \subsection{Model descriptions}
-% High-level summary of the original models, enough to stand alone: the toy vector
-% field (Dupont App. F.1.1), the convolutional field with time injected before every
-% convolution (App. F.1.2), augmentation by zero channels, single linear readout.
-% Written from the papers; no author code was used (PROVENANCE.md).
+
+All models integrate a learned vector field $f_\theta$ from $t=0$ to $t=1$ and classify the
+terminal state with a \emph{single linear map}. The linear readout matters: a nonlinear head
+could separate classes by itself, and the claims under test are about what the flow can do.
+An augmented model (ANODE) appends $p$ zero-valued dimensions to the state before integration;
+$p=0$ recovers the plain Neural ODE (NODE).
+
+For the two-dimensional tasks, $f_\theta$ is a multilayer perceptron of width 32 taking the state
+and time, applied directly to the raw input, following Appendix F.1.1 of the original paper. No
+encoder precedes the flow: a learned encoder is itself a diffeomorphism and would hand the model
+a warp that the topological argument assumes it does not have.
+
+For the image tasks, $f_\theta$ is the convolutional field of Appendix F.1.2 --- a
+$1\times1$, $3\times3$, $1\times1$ stack --- with the time injected as an additional channel
+\emph{before every convolution}, and augmentation realised as $p$ extra zero channels on the
+input. Model capacity is matched between NODE and ANODE by choosing the number of filters, as the
+original does: on MNIST 92 filters (85{,}316 parameters) against 64 filters with $p=5$
+(85{,}462); on CIFAR-10, 125 filters (173{,}611) against 64 filters with $p=10$ (172{,}452). Our
+counts sit about 0.5--1\% above the counts stated in the original Table 1, a difference we trace
+to the flattening readout and document in Section~\ref{sec:deviations}. The harness asserts the
+two arms are matched to within 2\% before every run.
+
+Everything was written from the descriptions in the two papers. We did not consult or copy either
+author's released implementation; the solver library \texttt{torchdiffeq}\supercite{torchdiffeq}
+is used only to integrate, and its adaptive Dormand--Prince (\texttt{dopri5}) method is the
+default throughout unless a claim concerns the solver itself.
 
 \subsection{Datasets}
-% Concentric spheres and circles (generated, parameters from App. F.2.1); MNIST;
-% CIFAR-10. Note that datasets are fetched at run time, not redistributed.
+
+The toy task is the concentric-spheres dataset of Appendix F.2.1: a filled inner disk
+($\lVert x\rVert \le 0.5$) enclosed by an annulus ($1.0 \le \lVert x\rVert \le 1.5$), sampled in a
+$1{:}2$ ratio. Because the inner class is entirely surrounded by the outer one, no flow in the
+plane can separate them without the trajectories crossing --- the geometry is the argument. We
+also use a second, thinner concentric-circles geometry as a robustness check where noted.
+
+The image tasks use MNIST and CIFAR-10 with per-image scaling to $[0,1]$ and no data
+augmentation, so that the comparison is about the flow rather than about an augmentation
+pipeline. Neither dataset is redistributed with our code; the loaders fetch them on first use.
 
 \subsection{Solver tolerance and the reconstruction check}
 \label{sec:recon}
@@ -152,6 +182,7 @@ seed, which we return to in Section~\ref{sec:results}. Several conclusions reach
 this project were retracted once the check was introduced.
 
 \subsection{Deviations from the original descriptions}
+\label{sec:deviations}
 % Digest of DEVIATIONS.md -- a first-class deliverable of this replication.
 % Emphasise the ones that could move a number: data-space integration (no stem),
 % toy field width, training tolerance vs the library defaults, epoch budgets,
@@ -170,17 +201,39 @@ this project were retracted once the check was introduced.
 \end{table}
 
 \subsection{Experimental setup and code}
-% - Seeds (>=5; 10 where the metric is heavy-tailed), and the statistic used:
-%   median [IQR] for skewed slice metrics, mean +- s.d. for image accuracy (Dupont's
-%   convention).
-% - Each claim had its refutation condition written BEFORE the run (OVERNIGHT_LOG.md);
-%   the raw observation decides. Say so -- it is unusual and it is a strength.
-% - Every result row records the hardware it ran on.
-% - Code availability, and the one command that rebuilds every figure from committed CSVs.
+
+Every experiment runs at least five seeds; the held-out-wedge metrics of claim 3 are strongly
+skewed across seeds, so those use ten. We report the mean and standard deviation for image
+accuracy, matching the original's convention, and the median with interquartile range wherever
+the across-seed distribution is skewed enough that a mean would misrepresent it. Which statistic
+is used is stated with each result.
+
+Before each run we recorded, in the repository's log, the condition under which the claim would
+be considered refuted --- written down in advance, so that the raw observation decides the outcome
+rather than a judgement made after seeing it. Those pre-registered conditions are quoted with the
+results below, including the two occasions on which our own prediction turned out to be wrong.
+Every result row also records the hardware that produced it; this is not bookkeeping for its own
+sake, and Section~\ref{sec:results} gives a case where it caught a confound.
+
+The code, the per-seed result files and the scripts that turn them into every figure and number
+in this article are in the repository cited at the end. A single command rebuilds all figures from
+the committed results without a GPU, and the continuous-integration workflow runs that same path
+on every commit.
 
 \subsection{Computational requirements}
-% RTX 3090 and A100 MIG slices; measured per-claim cost (MNIST 1.9 h, CIFAR-10 4.3 h,
-% grid 1.6 h CPU); what is and is not deterministic.
+
+Experiments ran on one NVIDIA RTX 3090 (24 GB) and on A100 80 GB MIG slices of a SLURM cluster;
+the two-dimensional tasks are faster on CPU and were run there, on an AMD Ryzen 7 7700X. The
+matched-parameter MNIST experiment takes about 1.9 hours and CIFAR-10 about 4.3 hours for five
+seeds on one A100 slice; the systematic extension of claim 3 takes about 1.6 hours across
+fourteen CPU workers. The whole set of experiments is on the order of twenty GPU-hours, which we
+note deliberately: none of the claims tested here requires a large compute budget to check.
+
+Seeding fixes initialisation, data generation and shuffling, so a re-run reproduces our numbers
+within the spread we report rather than bit-for-bit; adaptive solvers and GPU kernel selection are
+not bit-reproducible across machines. Figures rebuilt from the committed result files are exactly
+reproducible, and one toy experiment re-run two months later on a different thread count returned
+its held-out accuracies unchanged.
 
 \section{Results}
 \label{sec:results}
