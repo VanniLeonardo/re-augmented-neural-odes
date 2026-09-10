@@ -25,16 +25,47 @@
 % =============================================================================
 
 \section{Introduction}
-% - What Augmented Neural ODEs claims and why it matters: a Neural ODE flow is a
-%   homeomorphism, so some functions are unrepresentable; augmentation lifts the
-%   state and removes the obstruction.
-% - Enough of the original model that a reader WITHOUT access to Dupont et al. can
-%   follow this article (explicit ReScience requirement).
-% - What this replication adds: an independent from-description implementation,
-%   committed per-seed data, and a protocol that decides at which solver tolerance
-%   a number counts at all.
-% - Secondary target: four solver/memory claims of Chen et al. Say here that
-%   Chen's Table 1 is deliberately not attempted.
+
+A Neural ODE replaces the discrete layers of a network with a learned differential equation: the
+hidden state $h(t)$ evolves according to $\dot h = f_\theta(h,t)$, and the output is the state at
+$t=1$, obtained by handing $f_\theta$ to a numerical solver\supercite{chen2018neural}. Depth
+becomes integration time, memory can be made constant through the adjoint method, and the number
+of function evaluations the solver chooses becomes a measure of how hard the learned dynamics are
+to integrate.
+
+Dupont, Doucet and Teh\supercite{dupont2019augmented} observe that this construction carries a
+structural limitation. The flow of an ODE is a homeomorphism: trajectories cannot cross, so the
+map from input to terminal state cannot change the topology of the data. A Neural ODE therefore
+cannot represent functions that would require it --- and when asked to, it does not fail
+gracefully, but contorts its flow ever more sharply, which shows up as a rising number of function
+evaluations. Their remedy is to append zero-valued dimensions to the state before integrating, so
+the flow has room to separate the data in a higher-dimensional space. They support this with a
+proposition, experiments on nested geometries, and image benchmarks at matched parameter counts.
+
+These claims are worth replicating for two reasons. They are structural rather than statistical,
+so they should hold or fail sharply rather than by a margin, and they are cheap enough to test
+that a reader can check them on a single GPU. But the central empirical signature --- the number of
+function evaluations --- is a property of the solver as much as of the model, and that turns out to
+matter more than we expected. An adaptive solver given too loose a tolerance returns a
+plausible-looking trajectory and a plausible-looking evaluation count while not tracking the flow
+at all, and the vector field of a Neural ODE stiffens as it trains, so a tolerance that was
+adequate early need not remain so. Several conclusions we reached during this work had to be
+withdrawn for exactly that reason. We therefore attach a reconstruction check to every measurement
+and report each quantity at a tolerance where that check passes; Section~\ref{sec:recon} sets this
+out, and it governs every number we report.
+
+We reimplemented both models from the papers' descriptions, without consulting either author's
+code, and tested eight claims: four from Dupont et al.\ and four solver and memory claims of Chen
+et al.\ on which they rest. The central claims reproduce. The one-dimensional impossibility result
+reproduces in a strong form, with the Neural ODE sitting exactly at the error floor the
+proposition predicts. The cost and generalisation signatures reproduce on two geometries, and we
+extend the generalisation experiment into a systematic sweep that shows where the effect
+saturates. On the image benchmarks the ordering reproduces on both datasets while two of the four
+absolute accuracies undershoot the published values. Of the secondary claims, three reproduce,
+one pre-registered condition is refuted at tolerances where the solver is not integrating, and one
+--- the claim that the backward pass costs about half the forward pass --- does not reproduce; we
+diagnose why rather than leaving it as a discrepancy. We do not attempt Chen et al.'s benchmark
+table.
 
 \section{Scope of reproducibility}
 \label{sec:scope}
@@ -486,17 +517,39 @@ four orders of magnitude and unambiguous in every seed, but we note the smaller 
 \end{table}
 
 \subsection{What was easy}
-% The topological claims reproduce readily and are robust: the crossing flow and the
-% missing-slice gap appear immediately and survive every tolerance we tried.
-% torchdiffeq makes the solver side straightforward.
+
+The topological claims are robust and appear immediately. The one-dimensional crossing failure and
+the missing-region generalisation gap were visible in the first run of each, at every tolerance we
+tried, and survived every subsequent change of protocol; they are the kind of result that does not
+depend on getting the details right. Both papers' appendices specify the architectures precisely
+enough to reimplement without guesswork, and \texttt{torchdiffeq} makes the solver side
+straightforward, including the adjoint. The toy experiments are cheap: the entire two-dimensional
+programme, including a 300-run extension, runs in a few CPU-hours.
 
 \subsection{What was difficult}
-% - Solver tolerance: the single biggest obstacle. Several early conclusions had to be
-%   retracted once the reconstruction check was introduced; the honest account of that
-%   belongs here, since ReScience asks specifically for obstacles.
-% - Unstated hyperparameters (epochs for the image rows, optimiser settings).
-% - Cost of a high-accuracy reference on a stiff trained field (C1).
-% - Parameter matching to the stated counts with a flatten head.
+
+Solver tolerance was the dominant obstacle, and it was difficult in a particular way: nothing
+fails. The integrator returns a state, the evaluation counter returns a number, and only an
+explicit check reveals that the flow was not tracked. We introduced the reconstruction check after
+noticing that a set of results was too clean, and it invalidated several conclusions we had already
+recorded --- among them a factorial experiment whose headline turned out to be an artefact of a
+non-integrating tolerance, and our own first measurement of the backward/forward cost ratio.
+Anyone repeating this work should assume that a default tolerance is wrong until checked, and
+should re-check as training proceeds rather than once at the start.
+
+Three further difficulties are worth recording. Epoch budgets are not stated for the image
+experiments in the original, so our undershoot on two accuracies cannot be cleanly attributed
+between our budget and anything else. High-accuracy references are expensive on trained fields, for
+the stiffness reason quantified under claim 5, which constrains how tightly the error axis of a
+solver experiment can be pinned. And the metrics of the generalisation experiment are heavy-tailed
+across seeds --- most Neural ODE seeds collapse on the held-out wedge while an occasional one does
+not --- so five seeds are enough to see the effect but not to characterise it, and a one-seed pilot
+of the extension pointed in the wrong direction entirely.
+
+We also spent more time than we expected on our own infrastructure rather than on the models: the
+harness for the CIFAR-10 experiment deleted its results when restarted, which is the sort of defect
+that silently costs a day, and is the reason the released code writes per-seed files and resumes
+from completed ones.
 
 \subsection{Communication with the original authors}
 \label{sec:communication}
