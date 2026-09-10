@@ -1,4 +1,11 @@
-# REPLICATION_PLAN.md — Converting this repo into a ReScience C submission
+# Replication plan
+
+> **This is the plan as approved on 2026-07-13, before the experiments were run.** It is kept
+> as a record of the scope decision and the compute budget. It is not a statement of results.
+> For what was actually found, see [`README.md`](README.md), the article in `paper/`, and
+> [`DEVIATIONS.md`](DEVIATIONS.md). Where this document predicted an outcome, the prediction
+> was sometimes wrong, and the later files are the authority.
+
 
 **Status:** Phase 1 (implementation). Plan approved 2026-07-13 with the shrunken scope recorded below.
 **Author of plan:** engineering (code / experiments / reproducibility). The paper will be written separately.
@@ -8,7 +15,7 @@
 > - **D1 — ANODE MNIST (D3) is CORE**; **CIFAR-10 (D4) is a GATED stretch** (start only after every P0 + every other P1 item is done, green, committed — then STOP and ask); **SVHN (D5) + ImageNet (D9) are OUT permanently.**
 > - **D2 — NO faithful Chen conv Table-1 row.** Our MNIST rows are relabelled as *our own seeded baselines*; Chen's contribution to the submission is **C1–C4 only**.
 > - **D3 — Rubanova is CUT entirely** (Latent-ODE / ODE-RNN / sine / spiral removed from the paper scope and from `make reproduce-all`). Code is *not deleted* — it is excluded from the reproduction pipeline and gated tests and documented in `OUT_OF_SCOPE.md`. Rubanova stays only as a related-work citation.
-> - **C2 PROMOTED to a first-class result (abstract-worthy):** Chen Fig 3c reports backward NFE ≈ ½ forward; our torchdiffeq adjoint gives backward ≈ forward. This is *characterised* with a dedicated experiment (solver × tolerance × arch × ≥5 seeds), grounded in the torchdiffeq adjoint source, and gated behind a proven-correct NFE-split unit test.
+> - **C2 promoted to a first-class result:** Chen Fig 3c reports backward NFE at about half forward, and our adjoint did not reproduce that. *(The figure asserted here, backward approximately equal to forward, was itself withdrawn later: the measured ratio is 13 to 121 and depends on the adjoint tolerance. See `DEVIATIONS.md` row C2.)* This is *characterised* with a dedicated experiment (solver × tolerance × arch × ≥5 seeds), grounded in the torchdiffeq adjoint source, and gated behind a proven-correct NFE-split unit test.
 > - **Assumed hardware for this machine: single NVIDIA RTX 3090 (24 GB), driver 595, CUDA 12.1.** Coursework env = conda `neural_odes` (torch 2.5.1 / torchvision 0.20.1 / torchdiffeq 0.2.5 / numpy 2.4.3 / scikit-learn 1.8.0 / matplotlib 3.10.9 / wandb 0.26.1 / rich 15.0.0 / pytest 9.0.3, python 3.11.15). Docker available.
 >
 > Execution order is fixed (§7): **Stage A (P0 infra) → Stage B (tests) → Stage C (experiments, cheapest first) → Stage D (CIFAR gate).** Stop and report after Stage A and after Stage C.
@@ -77,7 +84,7 @@ This matches the approved shrunken scope, with three refinements the evidence fo
 
 - **D1 — Image tables:** ANODE **MNIST is core**; **CIFAR-10 is a gated stretch** (Stage D — only after all P0 + all other P1 are done/green/committed, then stop and ask); **SVHN + ImageNet out permanently.**
 - **D2 — Chen Table 1:** **NO** faithful conv row. Our MNIST rows are relabelled our own seeded baselines; Chen = C1–C4 only.
-- **D3 — Rubanova:** **CUT entirely** from the submission (code excluded via `extra/`, not deleted; related-work citation only).
+- **D3 — Rubanova:** **CUT entirely** from the submission (code kept but excluded from the pipeline, see `OUT_OF_SCOPE.md`; related-work citation only).
 
 ---
 
@@ -260,7 +267,7 @@ Standing rules: every table/figure regenerable from committed `results/*.csv|jso
 20. Determinism flags (`use_deterministic_algorithms`, `cudnn.deterministic`); code hygiene (delete empty `models/discrete.py`, dead imports, dedupe `ODEFunc`).
 21. CI (GitHub Actions running `make smoke`); Zenodo/Software-Heritage at submission (§5.7).
 
-**CUT this round (do not implement):** ~~faithful Chen conv Table-1 row (C5/D2)~~; ~~SVHN (D5), ImageNet (D9)~~; ~~any Rubanova benchmark — PhysioNet/MuJoCo/Human-Activity (R1–R3)~~; ~~sine/spiral re-runs (R4/R5)~~; ~~Latent-ODE faithfulness fixes~~ — all excluded via `extra/`.
+**CUT this round (do not implement):** ~~faithful Chen conv Table-1 row (C5/D2)~~; ~~SVHN (D5), ImageNet (D9)~~; ~~any Rubanova benchmark — PhysioNet/MuJoCo/Human-Activity (R1–R3)~~; ~~sine/spiral re-runs (R4/R5)~~; ~~Latent-ODE faithfulness fixes~~ All are excluded, see `OUT_OF_SCOPE.md`.
 
 **Dependency notes:** P0-1/2/3/5/6/7 unblock a clean clone-and-run; P0-4 unblocks the ANODE figures; Stage B P1-17 gates C2 (P1-12); P1-14 depends on P0-1 (pinned env) + P0-2 (offline logging); P2-18 depends on P1-10 infra; **D4 (CIFAR-10) depends on ALL P0+P1 done/green/committed → then stop and ask.**
 

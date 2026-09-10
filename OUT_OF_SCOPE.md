@@ -1,42 +1,44 @@
-# OUT_OF_SCOPE — coursework material excluded from the ReScience C replication
+# Material excluded from the replication
 
-The ReScience C submission replicates **Dupont et al. 2019 (Augmented Neural ODEs)**
-(primary) and a subset of **Chen et al. 2018 (Neural ODEs)** claims (C1–C4). The
-**Rubanova et al. 2019 (Latent ODEs) / ODE-RNN / synthetic sine & spiral** experiments
-from the original course project are **excluded**, because:
+The submission replicates Dupont et al. 2019 (Augmented Neural ODEs) and four solver and
+memory claims of Chen et al. 2018. The Latent ODE and ODE-RNN work of Rubanova et al. 2019,
+together with the synthetic sine and spiral experiments from the original course project, is
+excluded for three reasons.
 
-1. Rubanova's headline claims are on **PhysioNet / MuJoCo Hopper / Human Activity** —
-   none of which the code runs — so no replication of the paper is possible at our scope.
-2. The 2-D **spiral is a Chen-2018 experiment, not a Rubanova one**; presenting it under
-   a Rubanova heading would be a citation error.
-3. The synthetic 1-D sine can only be compared to Rubanova's *toy* Suppl. Table 2, and with
-   heavy setup drift — it is architecture validation, not a controlled reproduction.
+1. Rubanova's headline claims are on PhysioNet, MuJoCo Hopper and Human Activity. The code
+   does not run any of these, so a replication of that paper is not possible at our scope.
+2. The two-dimensional spiral is an experiment from Chen et al. 2018, not from Rubanova et
+   al. Presenting it under a Rubanova heading would be a citation error.
+3. The synthetic one-dimensional sine can only be compared against Rubanova's toy
+   supplementary Table 2, and with substantial setup drift. That is architecture validation
+   rather than a controlled reproduction.
 
-See `REPLICATION_PLAN.md` §1.1 / §3.C and decision record D3 for the full rationale.
+The full rationale is in `REPLICATION_PLAN.md`, sections 1.1 and 3.C.
 
-## What this means concretely
+## What this means
 
-- These experiments are **not** part of `make reproduce-all` and are **not** in the gated
-  test suite (`make test` / `make smoke`, which run `pytest -m "not extra"`).
-- The code is **kept in the repository** (not deleted) for coursework provenance, but it is
-  not maintained to the replication's reproducibility standard (its entry points still use
-  W&B directly and are not part of the pinned smoke pipeline).
-- Rubanova 2019 is cited only as **related work** in the paper.
+- These experiments are not part of `make reproduce-all` and not part of the test suite.
+  `make test` and `make smoke` run `pytest -m "not extra"`, which excludes them.
+- The code stays in the repository for provenance rather than being deleted. It is not
+  maintained to the reproducibility standard of the rest: its entry points still use Weights
+  and Biases directly and are not covered by the pinned smoke pipeline.
+- Rubanova et al. 2019 is cited in the paper as related work only.
 
-## Excluded files (left in place)
+## Excluded files, left in place
 
 | Path | Role |
 |---|---|
-| `main.py` | Integrated runner: Phase-1 synthetic Neural ODE + Phase-4 Latent ODE (sine/spiral). |
-| `training/train_timeseries.py` | Standalone ODE-RNN / GRU time-series runner (report Table 4). |
-| `training/timeseries_engine.py` | Time-series train/eval loops + metrics. |
-| `data/timeseries.py` | `IrregularSineWaveDataset` (standalone time-series data). |
-| `models/ode_rnn.py` | Standalone ODE-RNN + GRU baselines. |
-| `models/continuous.py` (Latent classes) | `LatentODEFunc`, `EncoderODEFunc`, `ODERNNEncoder`, `StandardGRUEncoder`, `VanillaGRUEncoder`, `LatentODE`. |
-| `data/synthetic.py` (`TimeSeriesDataset`) | Latent-ODE synthetic sine/spiral/damped signals. |
-| `scripts/make_plots.py`, `scripts/plots_odernn.py` | Latent-ODE / ODE-RNN figures. |
-| `tests/test_timeseries.py` | Time-series unit tests (marked `extra`; excluded from the gated suite). |
-| `results/3way_*.json`, `results/C*_spiral.json`, `results/final_*_e10.json` | Committed time-series result JSONs. |
+| `main.py` | Integrated runner: synthetic Neural ODE and Latent ODE on sine and spiral. |
+| `training/train_timeseries.py` | Standalone ODE-RNN and GRU time-series runner. |
+| `training/timeseries_engine.py` | Time-series training and evaluation loops. |
+| `data/timeseries.py` | `IrregularSineWaveDataset`. |
+| `models/ode_rnn.py` | Standalone ODE-RNN and GRU baselines. |
+| Latent classes in `models/continuous.py` | `LatentODEFunc`, `EncoderODEFunc`, `ODERNNEncoder`, `StandardGRUEncoder`, `VanillaGRUEncoder`, `LatentODE`. |
+| `TimeSeriesDataset` in `data/synthetic.py` | Synthetic sine, spiral and damped signals. |
+| `scripts/make_plots.py`, `scripts/plots_odernn.py` | Figures for this material. |
+| `tests/test_timeseries.py` | Unit tests, marked `extra` and excluded from the gated suite. |
+| `results/3way_*.json`, `results/C*_spiral.json`, `results/final_*_e10.json` | Committed result files. |
 
-To run this material anyway you need the optional `wandb` dependency (or `NODE_LOGGER=none`)
-and the coursework instructions in the top-level `README.md`.
+Running this material needs the optional `wandb` dependency, or `NODE_LOGGER=none`. The
+pre-replication coursework experiments that are still wired up are available through
+`make coursework`.
