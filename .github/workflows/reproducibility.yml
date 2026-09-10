@@ -6,7 +6,7 @@ name: reproducibility
 
 on:
   push:
-    branches: [main, rescience-c-replication]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -23,7 +23,7 @@ jobs:
       - name: Build the pinned CPU image (no cache, as a reviewer would)
         run: docker build -t neural-odes-repro .
 
-      - name: make smoke (acceptance gate; downloads MNIST)
+      - name: make smoke (acceptance gate; CPU only, no network)
         run: docker run --rm neural-odes-repro make smoke
 
       - name: make figures (every figure from committed CSVs; no GPU, no network)
