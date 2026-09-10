@@ -59,7 +59,7 @@ FIELDS_HELP = "spheres (toy, CPU) or mnist (conv ODE-Net; reuses a C1 checkpoint
 
 FIELDS_OUT = ["field", "seed", "trained", "solver", "tol", "adjoint_tol", "adj_offset",
               "fwd_nfe", "bwd_nfe", "ratio", "recon_rel", "recon_ok", "grad_reldiff",
-              "grad_ok", "wall_s", "capped", "hardware"]
+              "grad_ok", "wall_s", "capped", "ref_tol", "hardware"]
 
 
 def spec_to_method(spec: str):
@@ -122,15 +122,30 @@ def build_field(field: str, seed: int, epochs: int, tol: float, cfg, device):
 
 
 def reference_grads(func, y0, t, ref_tol: float):
-    """Gradients from DIRECT backprop at high accuracy -- the correctness reference."""
-    func.zero_grad(set_to_none=True)
-    func.nfe = 0
-    out = odeint(func, y0, t, method="dopri5", rtol=ref_tol, atol=ref_tol,
-                 options={"max_num_steps": 10_000_000})
-    out[1].pow(2).sum().backward()
-    g = torch.cat([p.grad.flatten() for p in func.parameters() if p.grad is not None])
-    func.zero_grad(set_to_none=True)
-    return g.detach().clone()
+    """Gradients from DIRECT backprop at high accuracy -- the correctness reference.
+
+    Direct backprop stores every intermediate state, so its memory grows with NFE (that
+    is precisely what claim 8 measures). On a conv field a very tight reference therefore
+    exhausts GPU memory, so we loosen the reference until it fits and RECORD the tolerance
+    actually used -- the reference must still be far tighter than any tolerance under test.
+    """
+    tol = ref_tol
+    for _ in range(3):
+        try:
+            func.zero_grad(set_to_none=True)
+            func.nfe = 0
+            out = odeint(func, y0, t, method="dopri5", rtol=tol, atol=tol,
+                         options={"max_num_steps": 10_000_000})
+            out[1].pow(2).sum().backward()
+            g = torch.cat([p.grad.flatten() for p in func.parameters() if p.grad is not None])
+            func.zero_grad(set_to_none=True)
+            return g.detach().clone(), tol
+        except torch.cuda.OutOfMemoryError:
+            func.zero_grad(set_to_none=True)
+            torch.cuda.empty_cache()
+            tol *= 100
+            print(f"    [reference] out of memory; loosening reference to {tol:.0e}", flush=True)
+    raise RuntimeError("could not compute a reference gradient within memory")
 
 
 class _CellTimeout(Exception):
@@ -231,15 +246,16 @@ def main() -> None:
         for seed in seeds:
             epochs = cfg.epochs if trained else 0
             func, y0 = build_field(cfg.field, seed, epochs, min(tols), cfg, device)
-            ref_g = reference_grads(func, y0, t, cfg.ref_tol)
+            ref_g, ref_tol_used = reference_grads(func, y0, t, cfg.ref_tol)
             print(f"  [{cfg.field} seed {seed} trained={trained}] reference gradients at "
-                  f"{cfg.ref_tol:.0e}", flush=True)
+                  f"{ref_tol_used:.0e}", flush=True)
             for spec in solvers:
                 for tol in tols:
                     for off in offsets:
                         r = one_cell(func, y0, t, spec, tol, tol * off, ref_g, cfg)
                         r.update({"field": cfg.field, "seed": seed, "trained": int(trained),
-                                  "adj_offset": off, "hardware": hardware})
+                                  "adj_offset": off, "ref_tol": ref_tol_used,
+                                  "hardware": hardware})
                         rows.append(r)
                         print(f"    {spec:12s} tol {tol:.0e} adj x{off:<5.0f} "
                               f"fwd {r['fwd_nfe']:6} bwd {r['bwd_nfe']:8} "
