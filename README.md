@@ -285,6 +285,19 @@ as resumable — training is sequential and no checkpoint is saved).
 
 ---
 
+## Licensing
+
+Code, harnesses, report scripts and the committed result CSVs: **MIT** (see
+[`LICENSE`](LICENSE)). ReScience C does not mandate a particular code licence — its
+FAQ asks only that code be under an open licence, referring to the Debian Free
+Software Guidelines — and MIT is DFSG-compliant.
+
+`paper/` is the official ReScience C template redistributed under its own terms
+(GPL-3+ for the template files, Apache-2.0 / SIL OFL for the bundled fonts); the
+published article will be CC-BY-4.0. Details in `LICENSE`.
+
+Copyright is held jointly by the six contributors in the repository's git history.
+
 ## Citation
 
 This is a replication. Cite the original work:

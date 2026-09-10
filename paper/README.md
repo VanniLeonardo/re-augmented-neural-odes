@@ -61,9 +61,9 @@ hand, which is exactly the metadata/PDF desync the template warns about.
 
 | Item | Where |
 |---|---|
-| Co-author name, ORCIDs, institutional emails, affiliation detail | `metadata.yaml` |
+| Co-author name, institutional emails, affiliation detail | `metadata.yaml` |
 | Abstract (write last) | `metadata.yaml` |
 | Zenodo DOI (or Software Heritage id) for the tagged submission commit | `metadata.yaml` |
 | Whether the original authors were contacted | `content.tex`, acknowledgements |
-| **The repository has no `LICENSE` file** — ReScience expects openly licensed code | repository root |
-| Confirm the `[Re]` vs `[¬Re]` title prefix with the editors if the undershoots are read as failure | `metadata.yaml` |
+| ORCIDs — optional for the build (the template omits the icon when empty) and not mandated by the journal, but ORCID is the identifier the metadata and DOI records use. A Google Scholar profile is not a substitute; there is no field for it | `metadata.yaml` |
+| Title prefix `[Re]` chosen (ordering and mechanism reproduce; two absolute numbers undershoot). Revisit only if an editor disagrees | `metadata.yaml` |

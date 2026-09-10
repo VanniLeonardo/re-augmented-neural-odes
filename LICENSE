@@ -1,0 +1,44 @@
+MIT License
+
+Copyright (c) 2026 Leonardo Vanni and the Bocconi 30562 Group 5 contributors
+(see the repository's git history for the full list of authors)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+-------------------------------------------------------------------------------
+NOTE ON THE CONTENTS OF THIS REPOSITORY
+
+This MIT licence covers the replication code, the experiment harnesses, the
+report/figure scripts and the committed per-seed result CSVs.
+
+It does NOT cover `paper/`, which contains the official ReScience C article
+template redistributed under its own terms:
+
+  * template files (`rescience.cls`, `header.tex`, `article.tex`, `Makefile`,
+    `yaml-to-latex.py`, `article.py`) — GPL-3 or later, (C) 2015-2020
+    Nicolas Rougier and co-authors; see `paper/COPYING`;
+  * bundled fonts — Apache License 2.0 (Roboto) and the SIL Open Font License
+    (Source Serif/Sans/Code Pro); see the licence file inside each font
+    directory.
+
+The article text itself is published by ReScience C under a Creative Commons
+Attribution 4.0 International licence (CC-BY-4.0).
+
+MNIST and CIFAR-10 are not redistributed here; the data loaders fetch them from
+their original sources at run time.
