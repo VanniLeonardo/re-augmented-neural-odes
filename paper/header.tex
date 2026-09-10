@@ -80,9 +80,12 @@
 
 
 %% --- Abstract ---------------------------------------------------------------
-%% \ifdefempty{\articleABSTRACT}{}{
-%%   {\small \sffamily \textbf{Abstract} \articleABSTRACT \par}
-%% }
+%% LOCAL CHANGE to the upstream template: this block ships commented out, so the
+%% abstract from metadata.yaml is defined but never typeset. Published ReScience C
+%% articles do show an abstract on page 1, so it is enabled here.
+\ifdefempty{\articleABSTRACT}{}{
+  {\small \sffamily \textbf{Abstract} \articleABSTRACT \par}
+}
 
 
 %% --- Replication ------------------------------------------------------------

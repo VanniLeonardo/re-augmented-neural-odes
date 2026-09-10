@@ -26,7 +26,9 @@ metadata.tex: metadata.yaml
 # -interaction=nonstopmode keeps the pdflatex backend from stopping at a
 # missing file reference and interactively asking you for an alternative.
 
-article.pdf: article.tex content.tex bibliography.bib metadata.tex rescience.cls
+# LOCAL CHANGE: header.tex was missing from these prerequisites upstream, so editing
+# it silently did not trigger a rebuild.
+article.pdf: article.tex content.tex header.tex bibliography.bib metadata.tex rescience.cls
 	latexmk -pdf -pdflatex="xelatex -interaction=nonstopmode" -use-make article.tex
 
 clean:

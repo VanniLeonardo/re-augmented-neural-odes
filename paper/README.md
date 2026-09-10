@@ -32,9 +32,18 @@ is the official ReScience C template, copied from
 GPL-3+ (see `COPYING`); the bundled fonts carry their own licences in their
 subdirectories.
 
-The template files are verbatim with **one exception**, marked inline: `article.tex`
-gains `\usepackage{booktabs}`, because `rescience.cls` loads `tabularx` but not
-`booktabs` and the result tables use `\toprule`/`\midrule`/`\bottomrule`.
+The template files are verbatim with **three exceptions**, all marked inline:
+
+1. `article.tex` gains `\usepackage{booktabs}`, because `rescience.cls` loads `tabularx`
+   but not `booktabs` and the result tables use `\toprule`/`\midrule`/`\bottomrule`.
+2. `header.tex` has its **Abstract block uncommented**. Upstream ships it commented out,
+   so the abstract in `metadata.yaml` is defined but never typeset; published ReScience C
+   articles do print an abstract on page 1. (The adjacent "A replication of" block is left
+   commented, matching those same published articles.)
+
+3. `Makefile` gains `header.tex` as a prerequisite of `article.pdf`. It was missing
+   upstream, so editing the header silently did not trigger a rebuild.
+
 `metadata.tex` and `article.pdf` are build outputs and are not committed.
 
 `rescience.cls` loads its fonts by relative path (`./source-serif-pro/…`), so the
