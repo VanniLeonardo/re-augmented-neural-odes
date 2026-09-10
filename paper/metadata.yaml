@@ -13,12 +13,35 @@ title: "[Re] Augmented Neural ODEs"
 # List of authors with name, orcid number, email and affiliation
 # Affiliation "*" means contact author (required even for single-authored papers)
 authors:
+  # ORDER IS NOT SETTLED -- currently the order the names were supplied in.
+  # ReScience mandates nothing here; decide it as a group and record who did what
+  # in the "Author contributions" section of content.tex.
   - name: Leonardo Vanni
     orcid:                       # TODO
     email: leogarda@gmail.com    # TODO: institutional address if preferred
     affiliations: 1,*            # * is for contact author
 
-  - name: TODO Co-author         # TODO: the co-author writing the manuscript
+  - name: Gaia Grossi
+    orcid:                       # TODO
+    email:                       # TODO
+    affiliations: 1
+
+  - name: Giuseppe Bassi
+    orcid:                       # TODO
+    email:                       # TODO
+    affiliations: 1
+
+  - name: Kabir Ben Nefla
+    orcid:                       # TODO
+    email:                       # TODO
+    affiliations: 1
+
+  - name: Anna Notaro
+    orcid:                       # TODO
+    email:                       # TODO
+    affiliations: 1
+
+  - name: Beatrice Porta
     orcid:                       # TODO
     email:                       # TODO
     affiliations: 1
