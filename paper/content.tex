@@ -270,15 +270,74 @@ its held-out accuracies unchanged.
 \subsection{Results reproducing Dupont et al.}
 
 \subsubsection{Claim 1: the one-dimensional crossing flow}
-% figures/crossing/crossing_flow.png (make fig-d8). Note NODE sits AT the
-% order-preserving floor rather than below it -- consistent with Proposition 1.
 
-\subsubsection{Claim 2: NFE growth with training budget}
-% figures/budget/, figures/budget_circles/ (make fig-d1).
+Proposition 1 predicts more than failure: an order-preserving map that must send both classes to
+opposite constants can do no better than collapsing them onto a single value, which for targets
+$\pm 1$ gives a mean squared error of exactly 1. That number is the theoretical floor, and it is
+what distinguishes a model that is genuinely obstructed from one that is merely undertrained.
+
+At the loosest tolerance where both arms pass the reconstruction check on every seed ($10^{-7}$),
+the Neural ODE reaches a median MSE of \textbf{1.0002} (range 1.0000--1.0003 over five seeds) and
+the augmented model \textbf{0.0007} (0.0001--0.0013). The Neural ODE sits \emph{at} the floor, not
+below it: the claim is reproduced, and reproduced in the strong form, since the failure has the
+magnitude the theory predicts rather than merely being large.
+
+This experiment is also the clearest illustration of Section~\ref{sec:recon}. Measured at the
+solver library's default tolerance of $10^{-3}$, the reconstruction check fails for all ten
+trained models, the worst reconstructing its input with a relative error above 10. The MSE values
+there are close to those above, so the conclusion is robust --- but at that tolerance it had not
+been \emph{established}, and robustness one has not checked is an assumption. Interestingly the
+augmented model is also the easier one to integrate: it passes the check from $10^{-5}$, whereas
+the Neural ODE, whose flow must steepen to approximate a map it cannot represent, needs $10^{-7}$.
+
+\subsubsection{Claim 2: cost growth with training budget}
+
+Sweeping the training budget from 25 to 1000 epochs and measuring at a reconstruction-checked
+tolerance of $10^{-6}$, the Neural ODE's median forward NFE grows by a factor of \textbf{1.74} on
+the concentric spheres while the augmented model's grows by \textbf{1.04}; at the original's
+budget of 50 epochs the Neural ODE needs \textbf{218} function evaluations against the augmented
+model's \textbf{170}. Both models classify the data essentially perfectly at that budget (dense
+accuracy 0.996 and 1.000), which is the point: the two models are not separated by accuracy but
+by the cost of the flow that achieves it. The pattern repeats on the thinner circles geometry
+(growth $\times 1.37$ against $\times 1.04$), so it is not an artefact of one dataset.
+
+One caveat belongs here rather than in a footnote. On the spheres, three of sixty measurements
+fail the reconstruction check --- a single seed at the three largest budgets, whose flow becomes
+too stiff to integrate at $10^{-6}$. That seed is the most extreme case of exactly the effect
+under study, so we report the medians including it and note that it cannot be measured faithfully
+at this tolerance.
 
 \subsubsection{Claim 3: generalisation across an unobserved region}
-% figures/slice/slice_generalisation.png (make fig-d2). Wedge [0, pi/5], verified
-% against the paper text (an earlier internal note had it wrong).
+
+Removing the angular wedge $[0, \pi/5]$ from the training set and testing on that wedge alone
+separates the two models sharply. Over five seeds, all reconstruction-checked, the Neural ODE
+reaches a median accuracy of \textbf{0.619} on the held-out wedge with a loss of \textbf{6.089},
+while the augmented model reaches \textbf{1.000} and \textbf{0.000}. Both fit the training data
+perfectly, and both score above 0.96 on an ordinary validation set; the gap appears only on the
+region the training data never covered.
+
+The across-seed spread deserves stating. The Neural ODE's held-out accuracy has an interquartile
+range of 0.613--0.921: most seeds collapse to near chance on the wedge, but one seed threads it
+almost perfectly. A mean would misrepresent this, which is why we report medians and why the
+extension below uses ten seeds rather than five.
+
+\paragraph{Extension: how the gap depends on the missing region.}
+The original demonstrates this with one wedge on one geometry. We swept the augmentation
+dimension $p \in \{0,1,2,3,5\}$, the wedge width $\{\pi/8, \pi/5, \pi/3\}$ and two geometries over
+ten seeds --- 300 runs, each with the same reconstruction check, of which six fail it and are
+excluded. The augmented model generalises better at every width, on both geometries, for every
+$p \ge 1$; no pre-registered check failed.
+
+The interesting part is where the effect stops growing. On the spheres the advantage in held-out
+accuracy increases from $+0.07$ at $\pi/8$ to $+0.26$ at $\pi/5$, and then flattens ($+0.27$ to
+$+0.30$ at $\pi/3$), with the last step lying inside the across-seed spread. Measured by loss
+rather than accuracy the advantage actually \emph{shrinks} at the widest wedge, because the
+augmented model degrades there too: a large enough hole hurts both models, and augmentation does
+not make an unobserved region free. On the second geometry the gap is smaller and not monotone in
+width. Two further observations: every model, the Neural ODE included, scores at least 0.998 on
+the observed region, so the failure is specifically an inability to extrapolate into the gap
+rather than a general fitting problem; and more augmentation is not monotonically better, with
+$p=2$ generalising best at the widest wedge on both geometries.
 
 \subsubsection{Claim 4: matched-parameter image benchmarks}
 % make fig-d3 (MNIST), make fig-d4 (CIFAR-10). State both undershoots plainly and
