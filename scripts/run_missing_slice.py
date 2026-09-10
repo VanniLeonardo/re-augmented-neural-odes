@@ -17,6 +17,7 @@ import argparse
 import csv
 import math
 import sys
+import platform
 from pathlib import Path
 from typing import Any, Dict, Tuple
 
@@ -39,6 +40,22 @@ DEVICE = torch.device("cpu")
 NOISE, LR = 0.05, 3e-3
 _GEOM = {"spheres": (1200, make_spheres), "circles": (1000, make_circles)}
 CRIT = nn.CrossEntropyLoss()
+
+
+def augment_of(model_name: str) -> int:
+    """'NODE' -> 0, 'ANODE-p<k>' -> k (any k, so the §6 grid can sweep augmentation)."""
+    return 0 if model_name == "NODE" else int(model_name.split("-p")[1])
+
+
+def cpu_name() -> str:
+    try:
+        with open("/proc/cpuinfo") as h:
+            for line in h:
+                if line.startswith("model name"):
+                    return line.split(":", 1)[1].strip()
+    except OSError:
+        pass
+    return platform.processor() or platform.machine()
 
 
 def _append(path: Path, row: Dict[str, Any]) -> None:
@@ -96,7 +113,8 @@ def _recon_and_nfe(model: ODENet, X: torch.Tensor, tol: float) -> Tuple[float, f
     return (back - x).norm(dim=1).max().item(), float(nfe)
 
 
-def run(model_name: str, augment_dim: int, seed: int, cfg) -> None:
+def run(model_name: str, augment_dim: int, seed: int, cfg) -> Dict[str, Any]:
+    """Train one cell from scratch and return its result row (the caller writes it)."""
     set_seed(seed)
     n, gen = _GEOM[cfg.geometry]
     Xtr, Ytr = gen(n_samples=n, noise=NOISE, seed=seed)
@@ -120,6 +138,9 @@ def run(model_name: str, augment_dim: int, seed: int, cfg) -> None:
     tr_acc, tr_loss = _acc_loss(model, Xtr, Ytr)
     fv_acc, fv_loss = _acc_loss(model, Xv, Yv)
     sl_acc, sl_loss = _acc_loss(model, Xs, Ys)
+    # Observed-region-only validation (§6): the full validation set CONTAINS the removed
+    # wedge, which blurs in-distribution generalisation with held-out extrapolation.
+    ob_acc, ob_loss = _acc_loss(model, Xv[~smask], Yv[~smask])
     recon, nfe = _recon_and_nfe(model, Xv, cfg.eval_tol)
     row = {
         "model": model_name, "augment_dim": augment_dim, "geometry": cfg.geometry, "seed": seed,
@@ -128,15 +149,16 @@ def run(model_name: str, augment_dim: int, seed: int, cfg) -> None:
         "train_acc": tr_acc, "train_loss": tr_loss,
         "full_val_acc": fv_acc, "full_val_loss": fv_loss,
         "slice_val_acc": sl_acc, "slice_val_loss": sl_loss,
+        "obs_val_acc": ob_acc, "obs_val_loss": ob_loss,
         "gen_gap_loss": sl_loss - tr_loss, "fwd_nfe": nfe,
         "recon_max": recon, "recon_ok": int(recon < cfg.recon_thresh),
-        "train_tol": cfg.train_tol, "eval_tol": cfg.eval_tol,
+        "train_tol": cfg.train_tol, "eval_tol": cfg.eval_tol, "hardware": cpu_name(),
     }
-    _append(Path(cfg.results_dir) / "slice_raw.csv", row)
     print(f"[{cfg.geometry[:3]} {model_name} s{seed}] train_loss {tr_loss:.3f} | "
           f"SLICE acc {sl_acc:.3f} loss {sl_loss:.3f} | full acc {fv_acc:.3f} | "
           f"gap {row['gen_gap_loss']:+.3f} | NFE {nfe:.0f} | "
           f"recon {recon:.1e} {'OK' if row['recon_ok'] else 'LOOSE'}", flush=True)
+    return row
 
 
 def parse_args():
@@ -158,7 +180,6 @@ def parse_args():
 def main():
     cfg = parse_args()
     seeds = [int(s) for s in cfg.seeds.split(",") if s.strip()]
-    spec = {"NODE": 0, "ANODE-p1": 1, "ANODE-p2": 2}
     models = [m for m in cfg.models.split(",") if m.strip()]
     out = Path(cfg.results_dir) / "slice_raw.csv"
     if out.exists():
@@ -167,7 +188,7 @@ def main():
           f"models {models} | seeds {seeds} | {cfg.epochs} ep | tol {cfg.train_tol}", flush=True)
     for model_name in models:
         for seed in seeds:
-            run(model_name, spec[model_name], seed, cfg)
+            _append(out, run(model_name, augment_of(model_name), seed, cfg))
     print(f"Wrote {out}", flush=True)
 
 

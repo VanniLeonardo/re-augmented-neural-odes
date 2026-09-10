@@ -19,7 +19,7 @@ SMOKE_DIR := .smoke
 SEEDS ?= 0,1,2,3,4
 
 .PHONY: help smoke test figures reproduce-all reproduce-dupont reproduce-chen \
-        d1 d2 d3 d4 d8 c1 c2 c3 c4 \
+        d1 d2 d3 d4 d8 c1 c2 c3 c4 slice-grid fig-slice-grid \
         fig-d1 fig-d2 fig-d3 fig-d4 fig-d8 fig-c1 fig-c2 fig-c3 fig-c4 \
         coursework mnist-baselines table2 table3 anode-figures solver-ablation fig3 \
         factorial budget c2-guard env docker-build docker-smoke clean
@@ -142,7 +142,13 @@ d1: budget  ## toy separation + NFE-vs-budget, accurate tol + recon check
 d2:  ## Dupont Fig 9: remove the angular wedge [0, pi/5] from TRAINING only
 	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.run_missing_slice \
 	  --geometry spheres --seeds $(SEEDS) --epochs 100 \
-	  --train_tol 1e-6 --eval_tol 1e-6
+	  --train_tol 1e-6 --eval_tol 1e-6 --results_dir results/slice_spheres
+
+slice-grid:  ## §6 extension: augmentation p x wedge width x {spheres, circles} x 10 seeds (CPU, resumable)
+	$(PY) -m scripts.run_slice_grid
+
+fig-slice-grid:  ## §6 extension: Fig 9 made systematic
+	$(PY) -m scripts.slice_grid_report
 
 # D3/D4 write one shard per seed (`*_s<seed>.csv`), the layout fig-d3/fig-d4 read. The
 # ladder includes the 1e-3 TRAIN tolerance so the tolerance the accuracy is measured at is

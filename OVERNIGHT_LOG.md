@@ -755,3 +755,33 @@ re-computes `test_acc` — max difference **0.0**. RAW final epoch, accuracy RE-
   `git pull` aborted on untracked C1 shards, SLURM accepted the jobs anyway. Caught from the same
   output and resubmitted at the right commit. A successful `sbatch` says nothing about which commit
   was queued; always check `git log -1` on the cluster before submitting.
+
+## [5] §6 MISSING-SLICE GRID — PRE-DECLARED (written BEFORE the run; REPLICATION_PLAN P2-18)
+Fig 9 shows ONE wedge on ONE geometry. §6 makes it systematic. `scripts/run_slice_grid.py`:
+augmentation **p ∈ {0,1,2,3,5}** × wedge width **w ∈ {π/8, π/5, π/3}** × geometry **{spheres,
+circles}** × **10 seeds** = 300 from-scratch cells, 100 epochs, train/eval tol 1e-6 + recon check
+(each cell is D2's exact harness). Metrics: held-out-slice acc + loss, plus the §6-requested
+**observed-region-only** validation (full val minus the wedge). Heavy-tailed, so **median [IQR]**.
+Cells failing recon are excluded from the statistics and counted.
+- **Second geometry = circles, not moons/spirals.** The standing rule is *no new datasets*; circles
+  is already in the repo (D1, and D2's original design). Moons/spirals from §6 are deliberately not used.
+- **G1 (Fig 9 at every width, spheres):** every ANODE (p≥1) median slice acc ≥ NODE's at every w.
+  **REFUTED if** any p≥1 is below NODE at any w.
+- **G2 (monotone in the size of the unobserved region — the §6 claim, spheres):** the advantage
+  A_p(w) = med slice acc(ANODE-p) − med slice acc(NODE) is non-decreasing in w for the majority of
+  p. **REFUTED if** not.
+- **G3 (survives a second geometry):** on circles, A_p > 0.05 at the widest wedge for the majority
+  of p. **REFUTED if** not.
+- **STOP-and-flag:** any ANODE worse than NODE on BOTH median slice loss AND acc at any width on
+  **either** geometry. Scope matches D2's S3, which was pre-declared over {circles, spheres}; it is
+  deliberately NOT narrowed to spheres after the probe below. Do not resolve alone.
+- **Consistency check:** the grid's (spheres, π/5, NODE / ANODE-p1, seeds 0–4) cells run D2's
+  identical code and config, so they must reproduce the committed D2 result up to CPU float order.
+- **Probe SEEN before this entry (1 seed, w = π/3, 4 cells — NOT a result):** spheres NODE slice acc
+  0.578 vs ANODE-p5 1.000; **circles NODE 0.998 vs ANODE-p5 0.950** — no NODE gap, and ANODE-p5
+  slightly *worse*. Recorded because it was observed before the checks were written; the checks
+  are §6's, unchanged by it. **Prediction on record:** G1 holds; G2 likely holds; **G3 likely
+  REFUTED**; the circles inversion may or may not survive 10 seeds — if it does on both loss and
+  accuracy, the STOP fires and it goes to the co-author, not to me.
+- **Budget:** 2.1–2.7 min/cell single-threaded → ~55 min on 14 workers (local Ryzen 7 7700X; the
+  2-D toy is faster on CPU). **If wall-clock exceeds 3 h, stop and flag.** Every row records its CPU.
