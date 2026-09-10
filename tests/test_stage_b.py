@@ -10,7 +10,7 @@ from torchdiffeq import odeint, odeint_adjoint
 
 from data.synthetic import make_spheres
 from models.continuous import ODEFunc
-from models.networks import ODENet, EulerDiscretizedODENet
+from models.networks import ODENet
 from training.utils import set_seed
 
 
@@ -32,10 +32,6 @@ def test_head_hidden_dim_builds_linear_or_mlp() -> None:
     mlp = ODENet(data_dim=2, hidden_dim=2, num_classes=2, use_stem=False, head_hidden_dim=16)
     assert isinstance(linear.fc, nn.Linear)
     assert isinstance(mlp.fc, nn.Sequential)
-
-
-def _count(m: nn.Module) -> int:
-    return sum(p.numel() for p in m.parameters() if p.requires_grad)
 
 
 def _param_grads(fn, method, dtype, **kw):
@@ -108,24 +104,6 @@ def test_no_stem_integrates_in_data_space() -> None:
 # ---------------------------------------------------------------------------
 # Parameter-count parity (assert it, across widths and depths).
 # ---------------------------------------------------------------------------
-@pytest.mark.parametrize("hidden_dim", [16, 64, 160])
-@pytest.mark.parametrize("num_layers", [2, 5, 50])
-def test_odenet_euler_param_parity(hidden_dim: int, num_layers: int) -> None:
-    """The Euler baseline is parameter-matched to the MLP ODE-Net, independent of
-    depth (because it weight-ties one ODEFunc)."""
-    ode = ODENet(data_dim=784, hidden_dim=hidden_dim, num_classes=10, use_stem=True)
-    euler = EulerDiscretizedODENet(
-        data_dim=784, hidden_dim=hidden_dim, num_classes=10, num_layers=num_layers
-    )
-    assert _count(ode) == _count(euler)
-
-
-def test_euler_param_count_is_depth_independent() -> None:
-    counts = {
-        L: _count(EulerDiscretizedODENet(784, 160, 10, num_layers=L))
-        for L in (5, 200, 1000)
-    }
-    assert len(set(counts.values())) == 1  # identical across depths (weight-tied)
 
 
 # ---------------------------------------------------------------------------

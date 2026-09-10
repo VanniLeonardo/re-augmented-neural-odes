@@ -3,7 +3,6 @@ import os
 import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 from typing import Any, Dict, List, Optional
 
 _PLOTS_DIR: str = "plots"

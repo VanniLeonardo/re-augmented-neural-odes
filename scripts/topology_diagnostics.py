@@ -64,7 +64,7 @@ def main() -> None:
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--epochs", type=int, default=500)
     p.add_argument("--train_tol", type=float, default=1e-3,
-                   help="train at the coursework default to reproduce the exact field")
+                   help="train at the loose default, to reproduce the field measured there")
     p.add_argument("--nsteps", type=int, default=4000, help="accurate rk4 steps for evaluation")
     p.add_argument("--results_dir", default="results/topology")
     args = p.parse_args()

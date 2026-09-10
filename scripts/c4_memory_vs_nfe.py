@@ -1,6 +1,6 @@
 """C4 — O(1)-memory-in-NFE via the adjoint (Chen 2018, Table 1 Memory column).
 
-The coursework's Table-7 varied the *Euler baseline depth*, which does NOT test Chen's claim.
+Varying the depth of a discrete baseline does not test the claim.
 This is the corrected experiment: hold ONE conv ODE field fixed, drive its forward NFE up by
 tightening the solver tolerance, and measure PEAK GPU MEMORY of a forward+backward pass under
   (a) odeint_adjoint  -- O(1) memory (recompute the state in the reverse pass), vs

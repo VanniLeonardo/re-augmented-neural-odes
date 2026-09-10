@@ -55,7 +55,7 @@ keywords: rescience c, python, pytorch, neural ordinary differential equations, 
 
 # Code URL and DOI/SWH (url is mandatory for replication, doi after acceptance)
 code:
-  - url: https://github.com/VanniLeonardo/NeuralODEs
+  - url: https://github.com/VanniLeonardo/re-augmented-neural-odes
   - doi:      # TODO: mint a Zenodo DOI for the tagged submission commit
   - swh:      # TODO: or a Software Heritage identifier
 

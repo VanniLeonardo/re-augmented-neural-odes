@@ -1,6 +1,6 @@
 # A replication of Augmented Neural ODEs (Dupont et al., 2019)
 
-[![reproducibility](https://github.com/VanniLeonardo/NeuralODEs/actions/workflows/reproducibility.yml/badge.svg?branch=rescience-c-replication)](https://github.com/VanniLeonardo/NeuralODEs/actions/workflows/reproducibility.yml)
+[![reproducibility](https://github.com/VanniLeonardo/re-augmented-neural-odes/actions/workflows/reproducibility.yml/badge.svg?branch=main)](https://github.com/VanniLeonardo/re-augmented-neural-odes/actions/workflows/reproducibility.yml)
 
 A [ReScience C](https://rescience.github.io/) replication of Dupont, Doucet and Teh,
 *Augmented Neural ODEs* (NeurIPS 2019), together with four solver and memory claims from
@@ -98,7 +98,7 @@ and are not a claim about that table (`DEVIATIONS.md`, row C4).
 | `c1` | Error falls and cost rises as the tolerance tightens, and time is proportional to NFE (Fig. 3a-b) | Mostly reproduced. Error falls monotonically for every adaptive solver, and Spearman ρ between time and NFE is 0.98 to 0.99. The monotone-cost condition recorded before the run is violated: dopri5 NFE falls from 26 to 20 between 1e-1 and 1e-2. Both of those rows fail the reconstruction check, so the violation lies where the solver is not integrating. | `make fig-c1` |
 | `c2` | Backward NFE is about half forward NFE (Fig. 3c) | Not reproduced. There is no single ratio. In the integrating regime it runs from 13 to 121 times, driven by the tolerance at which the adjoint is solved. `make fig-c2` reports it as a tolerance and field surface, and `scripts/c2_diagnosis_report.py` gives the diagnosis. | `make fig-c2` |
 | `c3` | NFE increases during training (Fig. 3d) | Reproduced. At 1e-7 the MNIST convolutional field grows from **384 to 738** NFE over six epochs, and the checked tolerance itself tightens as training proceeds. | `make fig-c3` |
-| `c4` | Adjoint memory is constant in effective depth (Table 1, memory) | Reproduced, using a corrected experiment. The coursework version swept the wrong axis. Adjoint memory is flat at **+0.0007 MB per NFE** against **+31.8** for direct backpropagation. | `make fig-c4` |
+| `c4` | Adjoint memory is constant in effective depth (Table 1, memory) | Reproduced, on the axis the claim is about. Sweeping the depth of a discrete baseline instead would test the wrong one. Adjoint memory is flat at **+0.0007 MB per NFE** against **+31.8** for direct backpropagation. | `make fig-c4` |
 
 ### Extension: Figure 9 made systematic
 
@@ -130,14 +130,8 @@ excluded. Held-out accuracy, median over seeds:
 
 ### Out of scope
 
-Rubanova et al. 2019 (Latent ODE, ODE-RNN, sine and spiral) is excluded from the submission.
-The code remains in the repository but nothing in the paper depends on it. SVHN and ImageNet
-are also excluded. See [`OUT_OF_SCOPE.md`](OUT_OF_SCOPE.md).
-
-The pre-replication coursework experiments remain runnable through `make coursework`. They
-are not part of the submission and are not cited by it. One of them, the stem by geometry by
-head factorial, has a withdrawn result (`DEVIATIONS.md`, rows A1 and A3). It was measured at
-a tolerance that does not integrate the field.
+Rubanova et al. 2019 (Latent ODE and ODE-RNN) is excluded, and no code for it is in this
+repository. SVHN and ImageNet are excluded too. See [`OUT_OF_SCOPE.md`](OUT_OF_SCOPE.md).
 
 ---
 
@@ -231,10 +225,9 @@ cannot solve the exact versions, use Docker.
 ## Repository structure
 
 ```text
-NeuralODEs/
+re-augmented-neural-odes/
 ├── Makefile                      # every reproduction entry point (`make help`)
 ├── .github/workflows/            # CI: the reviewer path, in the pinned container
-├── REPLICATION_PLAN.md           # scope, claim-by-claim analysis, compute budget
 ├── DEVIATIONS.md                 # where we differ from the papers as described
 ├── PROVENANCE.md                 # whether author code was copied (it was not)
 ├── OVERNIGHT_LOG.md              # conditions recorded before each run, and raw results
@@ -252,18 +245,17 @@ NeuralODEs/
 │   ├── c2_diagnosis/             #   c2  diagnosis of the ratio
 │   ├── mnist_nfe/ mnist_stiffening/  # c3 NFE growth and stiffening
 │   ├── c4/                       #   c4  constant memory against NFE
-│   └── factorial/                #       withdrawn result, kept for provenance
+│   └── topology/                 #       topology diagnostics for the toy fields
 ├── scripts/
 │   ├── run_*.py, train_*.py      # experiment harnesses, one per claim
 │   ├── *_report.py, plot_*.py    # committed files to figures and checks
 │   └── *.slurm                   # illustrative cluster scripts
 ├── models/
 │   ├── continuous.py             # ODEFunc, ODEBlock, ConvODEFunc
-│   ├── networks.py               # ODENet, ConvODENet, EulerDiscretizedODENet
-│   └── ode_rnn.py                # out of scope
+│   └── networks.py               # ODENet, ConvODENet
 ├── data/                         # loaders; the datasets themselves are gitignored
 ├── training/                     # training and evaluation loops, NFE tracking, logging
-└── tests/                        # `pytest -m "not extra"`
+└── tests/                        # `make test`
 ```
 
 ---
@@ -271,13 +263,13 @@ NeuralODEs/
 ## Tests
 
 ```bash
-pytest -m "not extra"    # the `extra` mark covers the out-of-scope material
+make test
 ```
 
-The suite pins the invariants the claims rest on rather than only the plumbing: the
-forward and backward NFE split, agreement between adjoint and direct gradients, augmentation
-zero-initialisation, parameter parity between the ODE-Net and the Euler baseline, the spheres
-geometry against Dupont Appendix F.2.1, seed determinism, flow faithfulness, and the CIFAR-10
+The suite pins the invariants the claims rest on rather than only the plumbing: the forward
+and backward NFE split, agreement between adjoint and direct gradients, augmentation
+zero-initialisation, the spheres geometry against Dupont Appendix F.2.1, seed determinism,
+flow faithfulness, the tolerance rule used to report the image results, and the CIFAR-10
 resume logic, which must never treat a seed that stopped part way as resumable.
 
 ---

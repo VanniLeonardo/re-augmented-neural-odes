@@ -47,7 +47,7 @@ DEVICE = torch.device("cpu")
 NOISE, LR = 0.05, 3e-3
 # geometry -> (n_samples, generator). Both are topologically nested (inner enclosed by outer),
 # so both carry the same obstruction; spheres = Dupont's filled disk + annulus, circles = two
-# thin concentric circles (coursework). n_samples matches each source.
+# thin concentric circles, the second geometry. n_samples matches each source.
 _GEOM = {"spheres": (1200, make_spheres), "circles": (1000, make_circles)}
 
 

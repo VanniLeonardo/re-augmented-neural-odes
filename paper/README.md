@@ -49,8 +49,8 @@ to `article.tex`. They account for about 8 MB of this directory. `metadata.tex` 
   run over a committed result file. `make figures` prints them all, each with the condition
   recorded before the run.
 - Sources: raw results in `../OVERNIGHT_LOG.md`, departures from the papers in
-  `../DEVIATIONS.md`, whether author code was copied in `../PROVENANCE.md`, scope in
-  `../REPLICATION_PLAN.md` and `../OUT_OF_SCOPE.md`.
+  `../DEVIATIONS.md`, whether author code was copied in `../PROVENANCE.md`, and scope in
+  `../OUT_OF_SCOPE.md`.
 - The article refers to claims 1 to 8. The `d1`, `c2` and similar identifiers name `make`
   targets and belong in the repository, not in the prose.
 - Report the partial results and the negative result as such. Two accuracies undershoot, one
