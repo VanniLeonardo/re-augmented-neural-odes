@@ -24,6 +24,16 @@
 % from the papers in DEVIATIONS.md; copying provenance in PROVENANCE.md.
 % =============================================================================
 
+% Figures are NOT committed: the per-seed CSVs are the canonical artifact and
+% `make figures` (repository root) rebuilds all of them in ~2 min without a GPU.
+% This guard keeps the paper compilable before that has been run.
+\newcommand{\resfig}[3]{%
+  \begin{figure}[h]\centering
+  \IfFileExists{#1}{\includegraphics[width=\linewidth]{#1}}%
+    {\fbox{\parbox{0.9\linewidth}{\centering\vspace{1em}\small\texttt{#1}\\
+     not built --- run \texttt{make figures} in the repository root\vspace{1em}}}}
+  \caption{#2}\label{#3}\end{figure}}
+
 \section{Introduction}
 
 A Neural ODE replaces the discrete layers of a network with a learned differential equation: the
@@ -307,6 +317,13 @@ opposite constants can do no better than collapsing them onto a single value, wh
 $\pm 1$ gives a mean squared error of exactly 1. That number is the theoretical floor, and it is
 what distinguishes a model that is genuinely obstructed from one that is merely undertrained.
 
+\resfig{../figures/crossing/crossing_flow.png}
+  {Claim 1. Left: median error against solver tolerance; the Neural ODE sits at the error floor
+   of 1 that Proposition~1 predicts, the augmented model three orders below it. Right: the
+   forward--backward reconstruction error, with the threshold marked; both arms fail the check at
+   the library default of $10^{-3}$, and the comparison is quoted where both pass.}
+  {fig:crossing}
+
 At the loosest tolerance where both arms pass the reconstruction check on every seed ($10^{-7}$),
 the Neural ODE reaches a median MSE of \textbf{1.0002} (range 1.0000--1.0003 over five seeds) and
 the augmented model \textbf{0.0007} (0.0001--0.0013). The Neural ODE sits \emph{at} the floor, not
@@ -331,6 +348,12 @@ model's \textbf{170}. Both models classify the data essentially perfectly at tha
 accuracy 0.996 and 1.000), which is the point: the two models are not separated by accuracy but
 by the cost of the flow that achieves it. The pattern repeats on the thinner circles geometry
 (growth $\times 1.37$ against $\times 1.04$), so it is not an artefact of one dataset.
+
+\resfig{../figures/budget/nfe_vs_epoch.png}
+  {Claim 2. Forward NFE against training budget on concentric spheres, at a
+   reconstruction-checked tolerance. The Neural ODE's cost grows as it trains; the augmented
+   model's is flat and lower.}
+  {fig:budget}
 
 One caveat belongs here rather than in a footnote. On the spheres, three of sixty measurements
 fail the reconstruction check --- a single seed at the three largest budgets, whose flow becomes
@@ -369,6 +392,12 @@ width. Two further observations: every model, the Neural ODE included, scores at
 the observed region, so the failure is specifically an inability to extrapolate into the gap
 rather than a general fitting problem; and more augmentation is not monotonically better, with
 $p=2$ generalising best at the widest wedge on both geometries.
+
+\resfig{../figures/slice_grid/slice_grid.png}
+  {Extension to claim 3: held-out accuracy and loss against the width of the removed wedge, by
+   augmentation dimension, on two geometries (median, interquartile range, ten seeds). The
+   advantage grows and then plateaus, and the augmented model degrades at the widest wedge too.}
+  {fig:slicegrid}
 
 \subsubsection{Claim 4: matched-parameter image benchmarks}
 
@@ -431,6 +460,11 @@ forward wall-clock, and the function evaluations. Both halves of the claim hold.
 monotonically as the tolerance tightens, for every adaptive solver tested. Forward time is
 strongly rank-correlated with NFE: Spearman's $\rho$ between 0.983 and 0.992 per solver.
 
+\resfig{../figures/c1/solver_dynamics.png}
+  {Claim 5. Left: endpoint error against tolerance for the adaptive solvers. Right: forward time
+   against function evaluations, for adaptive and fixed-step solvers; cost is linear in NFE.}
+  {fig:solver}
+
 The cost half of the claim, however, was pre-registered as \emph{monotone} and by that condition
 it is refuted: \texttt{dopri5}'s median NFE falls from 26 to 20 between tolerances $10^{-1}$ and
 $10^{-2}$. We report the refutation as it stands rather than restating the claim to fit. Where the
@@ -467,6 +501,12 @@ Measured on the convolutional ODE-Net at a tolerance that passes the reconstruct
 seed and epoch ($10^{-7}$), the forward NFE grows from \textbf{384 to 738} over six epochs, in
 every one of five seeds. The claim reproduces.
 
+\resfig{../figures/mnist_stiffening/stiffening.png}
+  {Claim 7. Forward NFE over training at a reconstruction-checked tolerance, and the fraction of
+   seeds still passing the check at each tolerance: the field becomes not only costlier but
+   harder to integrate at all.}
+  {fig:stiffening}
+
 The more interesting quantity is not the NFE but the tolerance. Over the same six epochs the
 fraction of seeds passing the check at $10^{-5}$ falls from 1.0 to 0.4, while $10^{-6}$ and
 $10^{-7}$ continue to hold: the field does not merely become more expensive to integrate, it
@@ -483,6 +523,11 @@ The original's memory claim concerns the ODE-Net's own effective depth, but the 
 experiment --- varying the depth of a discrete baseline and reporting the ODE-Net as a single point
 --- tests the wrong axis, which is what an earlier version of this project did. The claim requires
 holding the model fixed and driving \emph{its} number of function evaluations up.
+
+\resfig{../figures/c4/memory_vs_nfe.png}
+  {Claim 8. Peak memory against the model's own forward NFE, driven up by tightening the solver
+   tolerance: flat under the adjoint, linear under direct backpropagation.}
+  {fig:memory}
 
 Doing that by tightening the solver tolerance, peak memory under the adjoint is flat at
 \textbf{$+0.0007$ MB per function evaluation} (442 MB across a fivefold increase in NFE), while
