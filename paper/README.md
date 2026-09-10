@@ -61,8 +61,6 @@ hand, which is exactly the metadata/PDF desync the template warns about.
 
 | Item | Where |
 |---|---|
-| **Author order** — not settled; currently the order the names were supplied in | `metadata.yaml` |
-| Author contributions statement (the honest way to resolve ordering) | `content.tex` |
 | Institutional emails, affiliation detail (department/school) | `metadata.yaml` |
 | Abstract (write last) | `metadata.yaml` |
 | Zenodo DOI for the tagged submission commit — deliberately deferred until the code is final | `metadata.yaml` |

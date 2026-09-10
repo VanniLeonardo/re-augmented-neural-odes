@@ -1,83 +1,102 @@
 % =============================================================================
 % STRUCTURE ONLY -- no prose yet.
 %
-% Each section carries a comment saying what belongs there and which committed
-% artifact supplies it. Every number quoted in this paper must come from a
-% report script run over a committed CSV (`make figures` prints them all), never
-% be typed by hand. Claim IDs (D1-D4, D8, C1-C4) are the repository's, defined in
-% REPLICATION_PLAN.md §3; keep them out of the final prose or introduce them
-% explicitly, since a reader has not seen them.
+% Structure follows what regular ReScience C replication articles actually use
+% (e.g. "Learning with Noisy Labels [Re]visited", ReScience C 11, 2026) and the
+% ML Reproducibility Challenge reports ReScience publishes: Introduction, Scope
+% of reproducibility, Methodology, Results, Discussion (what was easy / what was
+% difficult / communication with the original authors).
 %
-% Sources: raw numbers + pre-declared refutation conditions in OVERNIGHT_LOG.md;
-% departures from the papers in DEVIATIONS.md; copying provenance in PROVENANCE.md.
+% ReScience C mandates no section list. What it does require (rescience.github.io/write):
+%   "the main focus should be on the replicated results and on any obstacles
+%    encountered during the replication"
+%   "sufficiently self-contained, but not to repeat all aspects of the original
+%    article or your documentation"
+%   readers may not have access to the original paper (paywall) -- do not assume it
+%   a claim of failure must be documented, and contact with the original authors attempted
+%
+% Every number quoted here must come from a report script run over a committed CSV
+% (`make figures` prints them all with their pre-declared checks), never typed by hand.
+% Internal claim IDs (D1-D4, D8, C1-C4) are the repository's: use the numbered
+% claims of Section \ref{sec:scope} in the prose instead.
+%
+% Sources: raw observations + pre-declared conditions in OVERNIGHT_LOG.md; departures
+% from the papers in DEVIATIONS.md; copying provenance in PROVENANCE.md.
 % =============================================================================
 
 \section{Introduction}
-% - Target: Dupont et al. 2019, Augmented Neural ODEs (primary).
-% - Secondary: four solver/memory claims of Chen et al. 2018 (C1-C4). Chen's
-%   Table 1 is deliberately NOT reproduced -- say so here, not later.
-% - Why these claims: the ANODE argument is topological (Prop. 1) and its
-%   empirical signature is cost (NFE), which makes faithfulness of the ODE solve
-%   a precondition for measuring anything. That is the paper's through-line.
-% - One paragraph on what a reader gets: a from-description reimplementation,
-%   per-seed data, and a protocol that decides at which tolerance a number counts.
+% - What Augmented Neural ODEs claims and why it matters: a Neural ODE flow is a
+%   homeomorphism, so some functions are unrepresentable; augmentation lifts the
+%   state and removes the obstruction.
+% - Enough of the original model that a reader WITHOUT access to Dupont et al. can
+%   follow this article (explicit ReScience requirement).
+% - What this replication adds: an independent from-description implementation,
+%   committed per-seed data, and a protocol that decides at which solver tolerance
+%   a number counts at all.
+% - Secondary target: four solver/memory claims of Chen et al. Say here that
+%   Chen's Table 1 is deliberately not attempted.
 
-\section{Scope of the replication}
+\section{Scope of reproducibility}
 \label{sec:scope}
-% - What is in: Prop. 1 crossing flow (D8); toy separation / NFE vs budget (D1);
-%   missing-slice generalisation, Fig 9 (D2) + our systematic extension;
-%   matched-parameter MNIST (D3) and CIFAR-10 (D4) from Table 1; Chen C1-C4.
-% - What is out and why: Rubanova et al. (Latent ODE / ODE-RNN), SVHN,
-%   ImageNet, Chen's Table 1. Cite OUT_OF_SCOPE.md reasoning in one sentence.
-% - Table \ref{tab:scope}: claim -> original figure/table -> our identifier.
+% The reviewer's map. State the claims as testable propositions, numbered, and
+% refer to these numbers everywhere in Section \ref{sec:results}.
+% Say plainly what is NOT attempted and why (Rubanova/Latent ODE, SVHN, ImageNet,
+% Chen Table 1) -- see OUT_OF_SCOPE.md.
+
+\begin{enumerate}
+  \item % Claim 1 -- a 1-D NODE cannot represent the crossing map; ANODE can (Prop. 1 / Fig. 3)
+  \item % Claim 2 -- NODE NFE grows with training budget; ANODE stays flat and cheaper (Fig. 6)
+  \item % Claim 3 -- NODE generalises poorly across an unobserved region; ANODE does not (Fig. 9)
+  \item % Claim 4 -- at matched parameters ANODE beats NODE on MNIST and CIFAR-10 (Table 1)
+  \item % Claim 5 -- solver error falls and cost rises as tolerance tightens (Chen Fig. 3a-b)
+  \item % Claim 6 -- backward NFE is about half forward NFE (Chen Fig. 3c)
+  \item % Claim 7 -- NFE increases during training (Chen Fig. 3d)
+  \item % Claim 8 -- adjoint memory is O(1) in effective depth (Chen Table 1)
+\end{enumerate}
 
 \begin{table}[h]
   \centering
-  \caption{Claims selected for replication. TODO: fill.}
-  \label{tab:scope}
+  \caption{Claims under test and where they appear in the original articles. TODO: fill.}
+  \label{tab:claims}
   \begin{tabular}{lll}
     \toprule
-    Claim & Original location & Status \\
+    \# & Original location & Reproduced here in \\
     \midrule
-    % Prop. 1, 1-D crossing flow      & Dupont Fig. 3  & -- \\
-    % NFE growth vs training budget   & Dupont Fig. 6  & -- \\
-    % Missing-slice generalisation    & Dupont Fig. 9  & -- \\
-    % Matched-param MNIST / CIFAR-10  & Dupont Table 1 & -- \\
-    % Solver dynamics                 & Chen Fig. 3a-b & -- \\
-    % Backward vs forward NFE         & Chen Fig. 3c   & -- \\
-    % NFE growth during training      & Chen Fig. 3d   & -- \\
-    % Constant-memory adjoint         & Chen Table 1   & -- \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\section{Methods}
+\section{Methodology}
+\label{sec:methods}
 
-\subsection{Reimplementation}
-% - Written from the papers as described; no author code copied (PROVENANCE.md).
-% - Architectures: toy field (App. F.1.1), conv field with per-convolution time
-%   injection (App. F.1.2), augmentation by zero channels, single linear readout.
-% - torchdiffeq used as the solver library only.
+\subsection{Model descriptions}
+% High-level summary of the original models, enough to stand alone: the toy vector
+% field (Dupont App. F.1.1), the convolutional field with time injected before every
+% convolution (App. F.1.2), augmentation by zero channels, single linear readout.
+% Written from the papers; no author code was used (PROVENANCE.md).
 
-\subsection{Solver tolerance as a first-class axis}
+\subsection{Datasets}
+% Concentric spheres and circles (generated, parameters from App. F.2.1); MNIST;
+% CIFAR-10. Note that datasets are fetched at run time, not redistributed.
+
+\subsection{Solver tolerance and the reconstruction check}
 \label{sec:recon}
-% THE METHODOLOGICAL CORE -- this subsection is why several numbers differ from a
-% naive re-run, and it should come before any result.
-% - A trained Neural ODE field stiffens; at loose tolerance the integrator returns
-%   an answer and a plausible NFE while not integrating the field.
-% - The reconstruction check: integrate to T, integrate back, require the input
-%   recovered to a relative tolerance; the per-row flag recon_ok.
-% - Reporting rule: the loosest tolerance at which BOTH compared arms pass on
-%   every seed. Rows that fail are reported as data, never as a headline number.
-% - Worked example (numbers from OVERNIGHT_LOG): the crossing-flow result at the
-%   default 1e-3, where the check fails for all 10 model-seeds.
+% THE METHODOLOGICAL CORE. It belongs in Methodology, before any result, because
+% every number in Section \ref{sec:results} depends on it.
+% - A trained Neural ODE field stiffens; at loose tolerance the integrator returns an
+%   answer and a plausible NFE while not integrating the field.
+% - Definition: integrate to T, integrate back, require the input recovered to a
+%   relative tolerance; the per-row flag recon_ok.
+% - Reporting rule: quote at the loosest tolerance where BOTH compared arms pass on
+%   EVERY seed; rows that fail are reported as data, never as a headline.
+% - Worked example: the crossing flow at the library default 1e-3, where the check
+%   fails for all 10 model-seeds (worst case ~1200% reconstruction error).
 
-\subsection{Deviations from the original description}
-% - Summarise DEVIATIONS.md; it is the first-class deliverable, this is its digest.
-% - The ones that change a number: toy field width, data-space integration (no
-%   stem), training tolerance vs the library defaults, epoch budgets, 5 seeds vs
-%   Dupont's 20 repeats, flatten-head parameter counts ~0.5-1% above the targets.
-% - Table \ref{tab:deviations}: deviation -> why -> expected effect.
+\subsection{Deviations from the original descriptions}
+% Digest of DEVIATIONS.md -- a first-class deliverable of this replication.
+% Emphasise the ones that could move a number: data-space integration (no stem),
+% toy field width, training tolerance vs the library defaults, epoch budgets,
+% 5 seeds vs Dupont's 20 repeats, parameter counts ~0.5-1% above the stated targets.
 
 \begin{table}[h]
   \centering
@@ -85,96 +104,98 @@
   \label{tab:deviations}
   \begin{tabular}{lll}
     \toprule
-    Deviation & Reason & Expected effect \\
+    Deviation & Reason & Expected effect on the result \\
     \midrule
     \bottomrule
   \end{tabular}
 \end{table}
 
-\subsection{Experimental protocol}
-% - Pre-declared refutation condition per claim, written before each run
-%   (OVERNIGHT_LOG.md); the raw observation decides, not a script's verdict.
-% - Seeds (>=5, 10 for the heavy-tailed slice metrics), median/IQR where the
-%   distribution is skewed, mean +- s.d. for the image accuracies (Dupont's
+\subsection{Experimental setup and code}
+% - Seeds (>=5; 10 where the metric is heavy-tailed), and the statistic used:
+%   median [IQR] for skewed slice metrics, mean +- s.d. for image accuracy (Dupont's
 %   convention).
-% - Every result row records the hardware it ran on; why that mattered (C1).
+% - Each claim had its refutation condition written BEFORE the run (OVERNIGHT_LOG.md);
+%   the raw observation decides. Say so -- it is unusual and it is a strength.
+% - Every result row records the hardware it ran on.
+% - Code availability, and the one command that rebuilds every figure from committed CSVs.
 
-\subsection{Computational environment and cost}
-% - RTX 3090 and A100 MIG slices; pinned container; per-claim cost table from
-%   `make help` (D3 1.9 h, D4 4.3 h, slice grid 1.6 h CPU -- all measured).
-% - What is and is not deterministic: seeds fix initialisation/shuffling, adaptive
-%   solvers and cuDNN are not bit-reproducible across machines; figures rebuilt
-%   from committed CSVs are.
+\subsection{Computational requirements}
+% RTX 3090 and A100 MIG slices; measured per-claim cost (MNIST 1.9 h, CIFAR-10 4.3 h,
+% grid 1.6 h CPU); what is and is not deterministic.
 
 \section{Results}
-% One subsection per claim. Each states: the original claim, the pre-declared
-% refutation condition, the raw observation at a recon-faithful tolerance, and the
-% verdict -- including where it is partial. Figures are regenerated by `make figures`.
+\label{sec:results}
+% Mirror Section \ref{sec:scope}: one subsection per claim, in the same order and
+% numbering. Each gives the pre-declared refutation condition, the raw observation at
+% a recon-faithful tolerance, and the verdict -- including where it is only partial.
 
-\subsection{Proposition 1: the one-dimensional crossing flow}
-% Dupont Fig. 3 / Prop. 1. Figure: figures/crossing/crossing_flow.png (make fig-d8).
-% Note the theory floor (MSE 1.0) and that NODE sits at it rather than below.
+\subsection{Results reproducing Dupont et al.}
 
-\subsection{Toy separation and NFE growth with training budget}
-% Dupont §4.2 / Fig. 6. Figures: figures/budget{,_circles}/ (make fig-d1).
+\subsubsection{Claim 1: the one-dimensional crossing flow}
+% figures/crossing/crossing_flow.png (make fig-d8). Note NODE sits AT the
+% order-preserving floor rather than below it -- consistent with Proposition 1.
 
-\subsection{Generalisation across an unobserved region}
-% Dupont §5.1 / Fig. 9. Figure: figures/slice/slice_generalisation.png (make fig-d2).
-% Wedge [0, pi/5] verified against the paper text.
+\subsubsection{Claim 2: NFE growth with training budget}
+% figures/budget/, figures/budget_circles/ (make fig-d1).
 
-\subsubsection{Extension: the missing-slice grid}
-% OUR ADDITION, label it clearly as beyond the original paper.
-% Augmentation x wedge width x geometry x 10 seeds; figures/slice_grid/ (make
-% fig-slice-grid). Report the advantage AND its limits (plateau, loss behaviour,
-% ANODE degrading at the widest wedge, non-monotonicity on the second geometry).
+\subsubsection{Claim 3: generalisation across an unobserved region}
+% figures/slice/slice_generalisation.png (make fig-d2). Wedge [0, pi/5], verified
+% against the paper text (an earlier internal note had it wrong).
 
-\subsection{Matched-parameter image benchmarks}
-% Dupont Table 1. MNIST (make fig-d3) and CIFAR-10 (make fig-d4).
-% Table \ref{tab:table1}: ours vs Dupont, at the recon-faithful tolerance, with
-% the two undershoots stated plainly, and the NFE ratio given as a range across
-% tolerances and runs rather than one number.
+\subsubsection{Claim 4: matched-parameter image benchmarks}
+% make fig-d3 (MNIST), make fig-d4 (CIFAR-10). State both undershoots plainly and
+% give the NFE ratio as a range across tolerances and runs, not a single number.
 
 \begin{table}[h]
   \centering
-  \caption{Matched-parameter image results vs Dupont Table 1. TODO: fill from
-           \texttt{make fig-d3} and \texttt{make fig-d4}.}
+  \caption{Matched-parameter image results against Dupont Table 1, quoted at the
+           loosest tolerance where both arms pass the reconstruction check.
+           TODO: fill from \texttt{make fig-d3} and \texttt{make fig-d4}.}
   \label{tab:table1}
   \begin{tabular}{lllll}
     \toprule
-    Dataset & Model & Ours & Dupont & Faithful tolerance \\
+    Dataset & Model & This replication & Original & Tolerance \\
     \midrule
     \bottomrule
   \end{tabular}
 \end{table}
 
-\subsection{Solver dynamics}
-% Chen Fig. 3a-b (C1). Figure: figures/c1/solver_dynamics.png (make fig-c1).
-% Includes the one pre-declared check that was REFUTED, and where the violation
-% lies (non-integrating tolerances). Do not soften this.
+\subsection{Results reproducing Chen et al.}
 
-\subsection{Backward versus forward NFE}
-% Chen Fig. 3c (C2). NOT reproduced; headline withdrawn. Present as a tolerance x
-% field surface. Figures: figures/c2/ (make fig-c2). This is a negative result and
-% should read as one, with the reason (our adjoint solves a stiffer augmented system).
+\subsubsection{Claim 5: solver dynamics}
+% figures/c1/solver_dynamics.png (make fig-c1). Includes the ONE pre-declared check
+% that was refuted, and where the violation lies (non-integrating tolerances).
+% Do not soften this.
 
-\subsection{NFE growth during training}
-% Chen Fig. 3d (C3). Figures: figures/mnist_nfe/, figures/mnist_stiffening/
-% (make fig-c3). Note the faithful tolerance itself tightens as training proceeds.
+\subsubsection{Claim 6: backward versus forward NFE}
+% NOT reproduced -- the strongest negative result here. Present as a tolerance x field
+% surface with the mechanism (our adjoint solves a stiffer augmented system).
+% figures/c2/ (make fig-c2). ReScience expects a documented failure claim; see also
+% Section \ref{sec:communication}.
 
-\subsection{Constant-memory adjoint}
-% Chen Table 1 memory column (C4). Corrected experiment -- the coursework swept the
-% wrong axis. Figure: figures/c4/memory_vs_nfe.png (make fig-c4).
+\subsubsection{Claim 7: NFE growth during training}
+% figures/mnist_nfe/, figures/mnist_stiffening/ (make fig-c3). Note that the
+% recon-faithful tolerance itself tightens as training proceeds.
+
+\subsubsection{Claim 8: constant-memory adjoint}
+% figures/c4/memory_vs_nfe.png (make fig-c4). Corrected experiment: the axis that
+% matters is the ODE-Net's own NFE, not the depth of a discrete baseline.
+
+\subsection{Results beyond the original papers}
+% The missing-slice grid: augmentation x wedge width x geometry x 10 seeds.
+% figures/slice_grid/slice_grid.png (make fig-slice-grid). Label it clearly as an
+% extension. Report the advantage AND its limits: it grows then plateaus, the loss
+% advantage shrinks at the widest wedge, ANODE degrades there too, and the second
+% geometry is not monotone in width.
 
 \section{Discussion}
-
-\subsection{What replicated and what did not}
-% Summary table \ref{tab:summary}: per claim, reproduced / partial / not reproduced.
-% Be explicit that "partial" means an absolute number missed while the ordering and
-% mechanism held.
+\label{sec:discussion}
+% Does the evidence support the original claims? Be explicit that "partial" means an
+% absolute number missed while the ordering and the mechanism held.
 
 \begin{table}[h]
   \centering
-  \caption{Summary of outcomes. TODO: fill.}
+  \caption{Summary of outcomes per claim. TODO: fill.}
   \label{tab:summary}
   \begin{tabular}{lll}
     \toprule
@@ -184,27 +205,34 @@
   \end{tabular}
 \end{table}
 
-\subsection{Why several numbers differ from a naive re-run}
-% The tolerance-faithfulness argument, generalised: accuracy proved robust to
-% integration error while NFE did not, so cost claims need the check and accuracy
-% claims need it stated. This is the transferable methodological contribution.
+\subsection{What was easy}
+% The topological claims reproduce readily and are robust: the crossing flow and the
+% missing-slice gap appear immediately and survive every tolerance we tried.
+% torchdiffeq makes the solver side straightforward.
 
-\subsection{Limitations}
-% Seeds below Dupont's 20 repeats; reduced epoch budgets; single reimplementation
-% (no independent second implementation); the deviations that could explain the
-% two undershoots; results are ours on our hardware, not the authors' code.
+\subsection{What was difficult}
+% - Solver tolerance: the single biggest obstacle. Several early conclusions had to be
+%   retracted once the reconstruction check was introduced; the honest account of that
+%   belongs here, since ReScience asks specifically for obstacles.
+% - Unstated hyperparameters (epochs for the image rows, optimiser settings).
+% - Cost of a high-accuracy reference on a stiff trained field (C1).
+% - Parameter matching to the stated counts with a flatten head.
+
+\subsection{Communication with the original authors}
+\label{sec:communication}
+% TODO -- ACTION REQUIRED BEFORE SUBMISSION. ReScience: "The authors of the failed
+% replication are expected to document their claim of failure, and to have attempted
+% to contact the authors of the original article." Claim 6 does not reproduce and two
+% accuracies undershoot, so contact should be attempted and the outcome recorded here,
+% including if there is no reply.
 
 \section{Conclusion}
-% What a reader should take away about ANODE's claims, and about measuring
+% What a reader should take away about the augmentation claims, and about measuring
 % Neural ODE cost at a tolerance that actually integrates the field.
 
-\section*{Code, data and reproduction}
-% Repository URL + DOI; `make figures` rebuilds every figure from committed
+\section*{Code and data availability}
+% Repository URL and DOI; `make figures` rebuilds every figure from the committed
 % per-seed CSVs in about two minutes with no GPU; CI runs that path on every push.
 
-\section*{Author contributions}
-% TODO: who did what.
-
 \section*{Acknowledgements}
-% TODO: original authors if contacted (state whether they were), compute providers
-% (Bocconi HPC), course context.
+% TODO: compute provider (Bocconi HPC), course context.
