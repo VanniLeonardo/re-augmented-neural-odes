@@ -76,11 +76,25 @@ replication:
  - doi:  10.48550/arXiv.1904.01681
 
 # Don't forget to surround abstract with double quotes
-abstract: "TODO: written last, once the results sections are final. Must state what
-           was replicated (Dupont et al. 2019, primary; four solver/memory claims
-           of Chen et al. 2018, secondary), that the reimplementation is from the
-           papers as described, the headline outcome including the partial results,
-           and the tolerance-faithfulness protocol that the numbers depend on."
+abstract: "We replicate Augmented Neural ODEs (Dupont et al., 2019), reimplemented from
+           the paper rather than from the authors' code, together with four supporting
+           claims about solver cost and adjoint memory from Neural Ordinary Differential
+           Equations (Chen et al., 2018). The structural claims reproduce: a Neural ODE
+           cannot represent the one-dimensional crossing map and fails at exactly the error
+           floor the accompanying proposition predicts; its integration cost grows during
+           training where an augmented model's stays flat; and it generalises poorly into a
+           region withheld from training, which augmentation repairs at every width and on
+           both geometries we tested. At matched parameter counts the augmented model is
+           more accurate and cheaper on MNIST and CIFAR-10, although two of the four
+           absolute accuracies fall short of the published values. Of the four supporting
+           claims, three reproduce; the claim that the backward pass costs about half the
+           forward pass in function evaluations does not, and we diagnose why. We attach an
+           invertibility check to every measurement, because an adaptive solver at too loose
+           a tolerance returns a plausible trajectory and a plausible evaluation count while
+           never tracking the flow, and the vector field of a Neural ODE stiffens as it
+           trains. Several conclusions we reached during this work were retracted for that
+           reason, and the reported cost discrepancy is dominated by the tolerance at which
+           the adjoint system is solved rather than by the choice of solver."
 
 # Bibliography file (yours)
 bibliography: bibliography.bib

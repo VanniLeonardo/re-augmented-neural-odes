@@ -130,12 +130,21 @@ above and all of which exceeded the compute available to us.
 
 \begin{table}[h]
   \centering
-  \caption{Claims under test and where they appear in the original articles. TODO: fill.}
+  \small
+  \caption{The eight claims, where they appear in the original articles, and the outcome.}
   \label{tab:claims}
-  \begin{tabular}{lll}
+  \begin{tabular}{@{}clll@{}}
     \toprule
-    \# & Original location & Reproduced here in \\
+    \# & Claim & Original & Outcome \\
     \midrule
+    1 & 1-D crossing map unrepresentable & Dupont, Prop.~1, Fig.~3 & reproduced \\
+    2 & NFE grows with training budget   & Dupont, Fig.~6         & reproduced \\
+    3 & Gap across an unobserved region  & Dupont, Fig.~9         & reproduced \\
+    4 & Matched-parameter image accuracy & Dupont, Table~1        & partial \\
+    5 & Solver error/cost vs tolerance   & Chen, Fig.~3a--b       & partial \\
+    6 & Backward NFE $\approx$ half forward & Chen, Fig.~3c       & not reproduced \\
+    7 & NFE grows during training        & Chen, Fig.~3d          & reproduced \\
+    8 & Adjoint memory constant in depth & Chen, Table~1          & reproduced \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -603,19 +612,45 @@ four orders of magnitude and unambiguous in every seed, but we note the smaller 
 
 \section{Discussion}
 \label{sec:discussion}
-% Does the evidence support the original claims? Be explicit that "partial" means an
-% absolute number missed while the ordering and the mechanism held.
+Table~\ref{tab:summary} collects the outcomes. Six of the eight claims reproduce, two of them
+with qualifications, and one does not. The two we call \emph{partial} both retain the structure of
+the original claim while missing on a number: on the image benchmarks the ordering and the cost
+advantage reproduce on both datasets while two of the four absolute accuracies fall short, and on
+the solver dynamics both substantive relations hold while a condition we pre-registered as
+monotone is violated at tolerances where the solver is not integrating. Neither is a failure of
+the underlying claim, and neither should be reported as a clean success.
+
+The picture that emerges is that the structural claims of the original paper --- the ones that
+follow from the topology of a flow --- are robust. They appeared immediately, survived every
+tolerance, every geometry and every seed we tried, and in the case of the one-dimensional result
+the model fails by exactly the margin the theory predicts. The claims that concern \emph{cost} are
+the fragile ones, and they are fragile for a reason that has little to do with the models.
+
 
 \begin{table}[h]
   \centering
-  \caption{Summary of outcomes per claim. TODO: fill.}
+  \small
+  \caption{Outcome per claim, with the evidence each rests on. Every quantity is quoted at a
+           tolerance where the reconstruction check passes.}
   \label{tab:summary}
-  \begin{tabular}{lll}
+  \begin{tabularx}{\linewidth}{@{}clX@{}}
     \toprule
-    Claim & Outcome & Evidence \\
+    \# & Outcome & Evidence \\
     \midrule
+    1 & reproduced & Neural ODE at the predicted error floor (1.0002) vs 0.0007 augmented \\
+    2 & reproduced & NFE growth $\times1.74$ vs $\times1.04$ over the budget sweep \\
+    3 & reproduced & held-out accuracy 0.619 vs 1.000; extended over widths and geometries \\
+    4 & partial & ordering reproduced on both datasets; two of four accuracies undershoot
+        by 0.6 and 2.2 points \\
+    5 & partial & error and time--NFE relations hold; the pre-registered monotone-cost
+        condition is refuted, at tolerances where the solver is not integrating \\
+    6 & not reproduced & 123 against the reported $\approx0.5$; dominated by the tolerance
+        at which the adjoint is solved, not by the solver family \\
+    7 & reproduced & NFE 384 $\rightarrow$ 738 over six epochs, and the faithful tolerance
+        tightens as training proceeds \\
+    8 & reproduced & $+0.0007$ vs $+31.8$ MB per function evaluation \\
     \bottomrule
-  \end{tabular}
+  \end{tabularx}
 \end{table}
 
 \subsection{What was easy}
@@ -655,19 +690,61 @@ from completed ones.
 
 \subsection{Communication with the original authors}
 \label{sec:communication}
-% TODO -- ACTION REQUIRED BEFORE SUBMISSION. ReScience: "The authors of the failed
-% replication are expected to document their claim of failure, and to have attempted
-% to contact the authors of the original article." Claim 6 does not reproduce and two
-% accuracies undershoot, so contact should be attempted and the outcome recorded here,
-% including if there is no reply.
+
+Claim 6 is the one we report as not reproduced, so before attributing a discrepancy to the
+original we made the discrepancy itself the object of study: the diagnosis in
+Section~\ref{sec:claim6} tests three candidate explanations against pre-registered thresholds,
+and identifies the coupling between the adjoint and forward tolerances as the dominant one. We
+would rather hand a reader a cause than a mismatch.
+
+That diagnosis does not settle every question, and two of them can only be answered by the
+original authors: at what tolerance the reverse solve in Figure 3c was run relative to the forward
+pass, and whether ``backward NFE'' there counts evaluations of the vector field or steps of the
+augmented adjoint system. We have written to them with those questions.
+% TODO before submission: replace this sentence with the outcome. If they reply, summarise the
+% answer and correct the result if they correct us. If they do not, say so plainly -- an
+% unanswered enquiry is an acceptable outcome, an unattempted one is not. Record the date sent.
 
 \section{Conclusion}
-% What a reader should take away about the augmentation claims, and about measuring
-% Neural ODE cost at a tolerance that actually integrates the field.
+
+The central argument of Augmented Neural ODEs replicates. A Neural ODE cannot represent the
+one-dimensional crossing map, and fails at exactly the error the proposition predicts rather than
+merely doing badly; its integration cost grows as it trains where an augmented model's does not;
+it generalises poorly into a region absent from training, and augmentation repairs this at every
+width and on both geometries we tried. At matched parameter counts the augmented model is more
+accurate and cheaper on both image benchmarks, though two of the four absolute accuracies fall
+short of the published values. Of the four supporting claims we took from Chen et al., three
+reproduce and one does not.
+
+The theme running through the exceptions is that the fragile results are the ones about cost, and
+they are fragile because cost is a property of the solver as much as of the model. An adaptive
+solver at too loose a tolerance returns an answer and an evaluation count without indicating that
+it never tracked the flow, and the field of a trained Neural ODE stiffens precisely as it becomes
+interesting, so a tolerance fixed at the start quietly stops being adequate. Every retraction we
+had to make during this work, and the one claim we do not reproduce, traces back to that. Our
+suggestion to anyone measuring these models is concrete: attach an invertibility check to every
+measurement, treat the tolerance as an experimental axis, report which tolerance a number came
+from, and report forward and backward evaluation counts separately rather than as a ratio.
+
+None of this requires a large budget. The whole programme here, including a three-hundred-run
+extension of one experiment, is on the order of twenty GPU-hours; the claims of both original
+papers are cheap to check. What they need is not more compute but an explicit answer to the
+question of whether the differential equation was solved at all.
 
 \section*{Code and data availability}
-% Repository URL and DOI; `make figures` rebuilds every figure from the committed
-% per-seed CSVs in about two minutes with no GPU; CI runs that path on every push.
+
+The implementation, the per-seed result files behind every number in this article, and the
+scripts that turn them into every figure are available at
+\url{https://github.com/VanniLeonardo/NeuralODEs}. The per-seed data are the committed artifact
+and the figures are not: a single command rebuilds all of them from that data in about two
+minutes, without a GPU, and prints alongside each one the pre-registered condition for the claim
+it supports. A continuous-integration workflow builds the pinned container from scratch and runs
+that path on every commit, so the reproduction route is exercised rather than merely documented.
+MNIST and CIFAR-10 are fetched from their original sources at run time and are not redistributed.
 
 \section*{Acknowledgements}
-% TODO: compute provider (Bocconi HPC), course context.
+
+This replication grew out of a course project at Bocconi University, and the GPU experiments were
+run on the university's high-performance computing cluster. We thank the authors of both original
+papers for work whose claims were specified precisely enough to be checked, and for releasing
+implementations we deliberately did not read.
