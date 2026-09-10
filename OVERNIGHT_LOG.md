@@ -852,3 +852,38 @@ reconstruction check AND a gradient-correctness check against direct backprop at
 - Stage A: toy spheres, 7 solvers × 3 tols × 2 adjoint offsets × 5 seeds × {trained, untrained},
   CPU, sharded per seed. Stage B: MNIST conv field on the A100s, reduced grid, reusing the C1
   checkpoints. Per-cell 15 min timeout — a runaway cell is recorded as capped, not a hung job.
+
+## [6] C2 DIAGNOSIS RESULT (456 cells; `results/c2_diagnosis/`, `figures/c2_diagnosis/`)
+Toy spheres 420 cells (5 seeds × {trained, untrained} × 7 solvers × 3 tols × 2 adjoint offsets,
+CPU, 29.5 min/seed) + MNIST conv 36 cells (3 seeds, A100, reusing the C1 checkpoints). 18 cells
+hit the 15-min cap; of the remaining 438, **316 pass BOTH the reconstruction and the gradient
+check** and carry the conclusions. Excluded cells are concentrated at tol 1e-3 (96 toy, 12 MNIST).
+- **H1 (solver family) REFUTED — and my prediction was right for once.** Stiff-capable adaptive
+  solvers are not cheaper: on the trained toy field at 1e-5, `scipy:LSODA` gives **2158.8** and
+  `scipy:BDF` **28.0** against `dopri5`'s **24.6**; at 1e-7, 384.3 and 32.4 against 95.9. On the
+  MNIST conv field **no SciPy cell completed within the cap at all**. Chen's implicit-Adams
+  family does not explain our gap; if anything it is worse here.
+- **H2 (adjoint tolerance) HOLDS, 15/17 solver × tolerance combinations.** Loosening the ADJOINT
+  tolerance 100× relative to the forward pass cuts the ratio by 5.2×–76×: MNIST `dopri5`
+  **123.3 → 4.06** (30×), `bosh3` **203.4 → 5.64** (36×); toy `dopri5` 24.6 → 1.96, `bosh3`
+  43.5 → 1.75. The two exceptions are the SciPy solvers. **This is the dominant cause.**
+- **H3 (ratio grows with training) REFUTED, 11/16.** `adaptive_heun`, `bosh3` and `dopri8` show
+  the UNTRAINED field with the *higher* ratio. **This corrects our own earlier committed
+  statement** that the bwd/fwd ratio is training-driven ("a random field is cheap; a trained
+  separating field is not"). The likely reason is that the ratio conflates two quantities: on an
+  easy field the *forward* NFE is small, so a modest backward cost still yields a large ratio.
+  The ratio is a poor summary statistic, which is itself worth saying in the paper.
+- **`torchdiffeq` defaults `adjoint_rtol = rtol`** (verified in the source): the expensive regime
+  we originally reported is the library's *default*, not a choice we made. That matters for how
+  the finding should be phrased.
+- **REVISION TRIGGER — DOES NOT FIRE as pre-declared.** With the adjoint at the forward tolerance
+  on a trained field, the lowest checked ratio is **5.96** (toy) and **118.9** (the conv field
+  Chen used). Unrestricted, a checked configuration does reach **0.78** (`adaptive_heun`, toy,
+  1e-5, adjoint ×100) — but that is neither Chen's solver nor his coupling, so it does not meet
+  the condition as written. **Our "claim 6 does not reproduce" therefore stands**, now with a
+  cause rather than just a number.
+- **Limitation, stated plainly:** we could not evaluate Chen's actual solver. torchdiffeq's
+  `implicit_adams` is fixed-step (so its NFE ratio is set by the step count, not by stiffness),
+  and the adaptive stiff-capable SciPy solvers time out on the conv field. So we can say the gap
+  is dominated by the adjoint tolerance coupling and is *not* explained by moving to a
+  stiff-capable solver — but not that Chen's exact configuration would behave as ours does.
