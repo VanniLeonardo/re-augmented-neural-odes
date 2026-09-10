@@ -1,0 +1,33 @@
+# Runs the reviewer's path on every push: build the pinned CPU container from scratch,
+# run the acceptance gate inside it, then rebuild every figure from the committed CSVs
+# and fail if that touched any committed result. Uses the same Dockerfile as
+# `make docker-build`, so CI and a reviewer test the identical artifact.
+name: reproducibility
+
+on:
+  push:
+    branches: [main, rescience-c-replication]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the pinned CPU image (no cache, as a reviewer would)
+        run: docker build -t neural-odes-repro .
+
+      - name: make smoke (acceptance gate; downloads MNIST)
+        run: docker run --rm neural-odes-repro make smoke
+
+      - name: make figures (every figure from committed CSVs; no GPU, no network)
+        run: docker run --rm -v "$PWD:/app" neural-odes-repro make figures
+
+      - name: Figures must not modify any committed result
+        run: git diff --exit-code -- results/
