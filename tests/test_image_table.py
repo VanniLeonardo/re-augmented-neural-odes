@@ -1,9 +1,9 @@
-"""The rule that decides which tolerance the D3/D4 headline numbers come from.
+"""The rule that selects the tolerance for the reported image results.
 
-scripts/image_table.py quotes accuracy and NFE at the LOOSEST tolerance where BOTH arms
-pass the reconstruction check on EVERY seed, and refuses shards that double-count a seed.
-If either breaks, a headline silently moves to a non-integrating tolerance or a seed is
-counted twice -- so both are pinned here.
+scripts.image_table quotes accuracy and cost at the loosest tolerance where both models pass
+the reconstruction check on every seed, and refuses input files that count a seed twice. If
+either behaviour breaks, a reported number silently moves to a tolerance at which the solver
+is not integrating.
 """
 import pandas as pd
 import pytest

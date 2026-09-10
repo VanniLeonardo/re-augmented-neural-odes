@@ -1,22 +1,9 @@
-"""C1 — solver dynamics on a trained MNIST conv ODE-Net (Chen 2018, Fig 3a-b).
+"""Solver dynamics on a trained MNIST convolutional ODE-Net (Chen Figure 3a-b).
 
-Chen's claim: as the solver tolerance tightens, numerical error falls and cost rises,
-with forward time roughly proportional to NFE. Fig 3a-b sweep tolerance on a *trained*
-ODE-Net; this reproduces that, and extends it to the fixed-step solvers, whose analogous
-cost axis is the step count rather than a tolerance.
-
-Method (one trained model per seed -- the sweep is an EVALUATION sweep, not a retrain):
-  1. train a conv ODE-Net at --train_tol, then freeze it;
-  2. compute a high-accuracy REFERENCE endpoint (dopri8 at --ref_tol) for a fixed test
-     feature batch -- every error below is measured against this, so "numerical error"
-     means error of the integrator, not of the classifier;
-  3. sweep adaptive solvers x tolerance and fixed-step solvers x step count, recording
-     endpoint error, forward wall-clock (median of repeats, CUDA-synchronised), forward
-     and backward NFE, and a forward->backward reconstruction check.
-
-Every row carries recon_ok and the hardware it ran on. A row whose reconstruction fails
-is DATA (the integrator is not integrating the field there) and is reported as such --
-it is never used as a faithful cost or error number. See DEVIATIONS.md A4.
+Trains one model per seed and then sweeps the solver at evaluation: adaptive solvers
+against tolerance, fixed-step solvers against step count. Errors are measured against a
+high-accuracy reference endpoint, so the error axis is the integrator's rather than the
+classifier's. Trained models are cached, so the sweep can be repeated without retraining.
 """
 from __future__ import annotations
 

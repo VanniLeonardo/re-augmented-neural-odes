@@ -1,15 +1,8 @@
-"""D8 report — the 1-D crossing flow (Dupont Fig 3 / Proposition 1), recon-checked.
+"""Report the one-dimensional crossing flow (Dupont Proposition 1, Figure 3).
 
-Reads results/crossing/crossing_summary.csv (one row per model x seed x eval_tol) and
-reports, per tolerance: median MSE, median forward NFE, and the recon_ok fraction. Then
-picks the LOOSEST tolerance at which BOTH arms are recon_ok on every seed and evaluates
-the pre-declared refutation there. A tolerance where the reconstruction check fails is
-printed but never used for the headline -- at loose tol the integrator reports a
-plausible NFE while not integrating the field (DEVIATIONS.md A4).
-
-Theory floor: an order-preserving 1-D flow can do no better than collapsing both classes
-toward a constant; with targets +/-1 the optimal constant is 0, so MSE ~= 1.0 is what
-Proposition 1 predicts for the NODE -- not merely "a bad score".
+Lists every tolerance, then compares the two models at the loosest tolerance where both
+pass the reconstruction check. An order-preserving map can do no better than a mean squared
+error of 1 on this task, so that value is the floor the Neural ODE is expected to reach.
 """
 from __future__ import annotations
 

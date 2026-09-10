@@ -138,8 +138,8 @@ def run(model_name: str, augment_dim: int, seed: int, cfg) -> Dict[str, Any]:
     tr_acc, tr_loss = _acc_loss(model, Xtr, Ytr)
     fv_acc, fv_loss = _acc_loss(model, Xv, Yv)
     sl_acc, sl_loss = _acc_loss(model, Xs, Ys)
-    # Observed-region-only validation (§6): the full validation set CONTAINS the removed
-    # wedge, which blurs in-distribution generalisation with held-out extrapolation.
+    # Validation on the observed region only. The full validation set includes the
+    # removed wedge, which mixes in-distribution accuracy with extrapolation.
     ob_acc, ob_loss = _acc_loss(model, Xv[~smask], Yv[~smask])
     recon, nfe = _recon_and_nfe(model, Xv, cfg.eval_tol)
     row = {

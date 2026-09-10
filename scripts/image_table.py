@@ -1,16 +1,9 @@
-"""Faithful-accuracy summary shared by the image experiments (D3 MNIST, D4 CIFAR-10).
+"""Shared reporting rule for the image experiments, MNIST and CIFAR-10.
 
-Both experiments are reported by the same rule, so the rule lives in one place:
-
-  * the ladder of evaluation tolerances includes the TRAINING tolerance, so the tolerance
-    the accuracy is measured at is itself reconstruction-checked;
-  * the headline tolerance is the LOOSEST one at which BOTH arms are recon_ok on every
-    seed at the final epoch;
-  * accuracy is quoted as re-measured AT that tolerance (`test_acc_at_tol`), not at the
-    training tolerance, and the difference between the two is printed (R-ACC1);
-  * the ANODE-NODE gap is checked at that tolerance (R-ACC2), with the NFE comparison.
-
-Accuracies are mean ± s.d. (ddof=1) over seeds, the convention of Dupont's Table 1.
+Accuracy and cost are quoted at the loosest tolerance where both models pass the
+reconstruction check on every seed at the final epoch. Accuracy is re-measured at that
+tolerance rather than taken from the training tolerance. Keeping the rule in one place
+stops the two experiments from drifting apart.
 """
 from __future__ import annotations
 

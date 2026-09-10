@@ -1,32 +1,9 @@
-"""C2 diagnosis — WHY does backward NFE ~ 1/2 forward NFE (Chen Fig. 3c) not reproduce?
+"""Diagnose why the backward/forward NFE ratio does not match Chen Figure 3c.
 
-Our C2 result is that the adaptive backward/forward NFE ratio is not 0.5 and not a single
-number: in the integrating regime it runs ~13-121x, driven by tolerance and by how trained
-the field is. This script asks what explains the gap to Chen's 0.5. Three candidate causes,
-each an axis here:
-
-  SOLVER FAMILY  Chen used implicit Adams (a stiff-capable, adaptive, implicit method).
-                 We used dopri5, an EXPLICIT Runge-Kutta pair. The adjoint integrates an
-                 augmented reverse system (state + adjoint + parameter sensitivities) that
-                 is stiffer than the forward one, and explicit methods pay for stiffness in
-                 step count while implicit ones do not. torchdiffeq's `implicit_adams` is
-                 FIXED-step, so it is not a fair proxy; `scipy_solver` (LSODA, which switches
-                 between Adams and BDF, and BDF) is the closest adaptive stiff-capable
-                 analogue available, and is what we use to stand in for Chen's solver.
-
-  ADJOINT TOLERANCE  odeint_adjoint can solve the reverse system at a different tolerance
-                 from the forward pass. If the backward tolerance is looser, the ratio falls.
-
-  FIELD STIFFNESS  a trained field is stiffer than an untrained one (our C1/C3 finding).
-
-Every cell also checks that the gradients are actually CORRECT, against direct backprop at
-high accuracy: a configuration that is cheap because it is solving the adjoint badly is not
-evidence about cost. Cells failing that check, or the forward/backward reconstruction check,
-are recorded and excluded from the conclusions rather than dropped.
-
-This can overturn our own negative result. See the pre-declared REVISION TRIGGER in
-OVERNIGHT_LOG.md: if a configuration faithful to Chen's description reproduces his ratio,
-the paper must say the ratio is solver-specific rather than say the claim does not replicate.
+Sweeps solver, forward tolerance, adjoint tolerance, field and seed. Each cell records the
+ratio, a forward-backward reconstruction check, and the agreement of its gradients with
+direct backpropagation. A configuration that is cheap because it solves the adjoint badly
+is not evidence about cost, so both checks gate the conclusions.
 """
 from __future__ import annotations
 

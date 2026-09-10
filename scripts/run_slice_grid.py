@@ -1,15 +1,9 @@
-"""§6 missing-slice GRID — augmentation p × wedge width × geometry × seed (extends Fig 9).
+"""Missing-slice grid: augmentation dimension, wedge width, geometry and seed.
 
-Dupont's Fig 9 shows one wedge ([0, π/5]) on one geometry. REPLICATION_PLAN.md §6 makes it
-systematic: does ANODE's advantage on an unobserved region grow with the size of that region,
-depend on how much augmentation is given, and survive a second geometry? Every cell is one
-from-scratch training run of `scripts.run_missing_slice.run` (accurate tolerance, recon
-check, slice / observed-region / full validation), so the grid inherits D2's faithfulness.
-
-Cells run in parallel on CPU (the 2-D toy is faster on CPU than GPU, one thread per worker).
-Only the parent process writes the CSV, so there are no races. RESUMABLE: a cell has no
-intermediate state -- it is either finished (a row exists) or absent -- so re-running skips
-finished cells and retries the rest.
+Each cell is one training run of scripts.run_missing_slice.run, so the grid inherits its
+tolerance and reconstruction check. Cells run in parallel on CPU with one thread each, and
+only the parent process writes the file. Finished cells are never repeated, so the grid
+resumes after an interruption.
 """
 from __future__ import annotations
 

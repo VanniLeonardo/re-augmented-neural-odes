@@ -109,7 +109,7 @@ def main():
     with out.open("w", newline="") as h:
         w = csv.DictWriter(h, fieldnames=list(rows[0].keys())); w.writeheader(); w.writerows(rows)
 
-    # summary printed ALONGSIDE raws (never a bare verdict): integrating-regime ratio per field
+    # Summary printed with the raw rows: ratio per field in the integrating regime.
     print("\n--- integrating-regime (recon_ok, trained) bwd/fwd ratio, median[min,max] over seeds/tol ---")
     import statistics
     for geom in geoms:

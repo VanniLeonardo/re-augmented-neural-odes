@@ -1,23 +1,9 @@
-"""C2 diagnosis report — why the backward/forward NFE ratio does not match Chen Fig. 3c.
+"""Report the backward/forward NFE diagnosis.
 
-Merges results/c2_diagnosis/*.csv (toy spheres, CPU; MNIST conv field, GPU) and evaluates the
-hypotheses pre-declared in OVERNIGHT_LOG.md before the runs:
-
-  H1  a stiff-capable adaptive solver gives a ratio >=5x smaller than dopri5 at matched
-      tolerance (Chen used implicit Adams; we used an explicit Runge-Kutta pair)
-  H2  loosening the ADJOINT tolerance 100x relative to the forward pass reduces the ratio >=5x
-  H3  the ratio grows with training, for every solver
-
-  REVISION TRIGGER  if any configuration faithful to Chen's description reaches ratio <= 1
-      while both reconstruction-faithful and gradient-correct, then "claim 6 does not
-      reproduce" is wrong as stated and the paper must report a scope condition instead.
-      "Faithful to Chen's description" is read as: the adjoint solved at the forward
-      tolerance (which is also torchdiffeq's default, adjoint_rtol = rtol), on a trained
-      field. The unrestricted minimum is reported alongside it, since the two disagree.
-
-Only cells that pass BOTH the reconstruction check and the gradient check against direct
-backprop are used for the conclusions; the rest are counted and shown, never silently dropped.
-A cheap configuration that computes the wrong gradient is not evidence about cost.
+Merges results/c2_diagnosis/*.csv and evaluates the three explanations recorded in
+OVERNIGHT_LOG.md before the runs, together with the condition that would require the
+claim-6 result to be restated. Only cells passing both the reconstruction and the gradient
+check carry the conclusions.
 """
 from __future__ import annotations
 
@@ -138,11 +124,10 @@ def main() -> None:
           f"({sum(h3)}/{len(h3)} combinations grow)")
 
     print("\n[REVISION TRIGGER] is Chen's ratio reachable in a checked configuration?")
-    # The trigger was pre-declared for a configuration FAITHFUL TO CHEN'S DESCRIPTION. Chen
-    # does not describe decoupling the adjoint tolerance, and torchdiffeq's default is
-    # adjoint_rtol = rtol, so the faithful reading is: adjoint solved at the forward
-    # tolerance, on a trained field. Both readings are reported; they disagree, and the
-    # narrower one is the one that was pre-declared.
+    # The condition was recorded for a configuration matching Chen's description. Chen
+    # does not describe decoupling the adjoint tolerance, and the torchdiffeq default
+    # is adjoint_rtol = rtol, so that reading solves the adjoint at the forward
+    # tolerance. Both readings are reported because they disagree.
     faithful = ok[(ok.adj_offset == 1) & (ok.trained == 1)]
     fmin = faithful.ratio.min()
     b = faithful.loc[faithful.ratio.idxmin()]

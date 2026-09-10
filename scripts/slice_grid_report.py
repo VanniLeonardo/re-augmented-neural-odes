@@ -1,23 +1,9 @@
-"""§6 missing-slice grid report — Fig 9 made systematic.
+"""Report the missing-slice grid.
 
-Reads results/slice_grid/slice_grid.csv (augmentation p × wedge width × geometry × seed) and
-evaluates the checks pre-declared in OVERNIGHT_LOG.md before the run:
-
-  G1  on spheres, at EVERY width, every ANODE (p>=1) has median held-out-slice accuracy
-      >= NODE's (Dupont §5.1, now across widths rather than one example wedge)
-  G2  the advantage A_p(w) = median slice acc(ANODE-p) - median slice acc(NODE) is
-      non-decreasing in the wedge width w, for the majority of p (monotone in the size of
-      the unobserved region -- the §6 claim)
-  G3  the advantage survives a second geometry: on circles, A_p > 0.05 at the widest wedge
-      for the majority of p
-  STOP  any ANODE worse than NODE on BOTH median slice loss AND accuracy, at any width on
-      EITHER geometry (as D2's S3) -- flagged, not resolved here
-
-Slice metrics are heavy-tailed across seeds (one NODE seed can thread the hole cleanly),
-so everything is median [IQR], never mean ± sd. Statistics use recon_ok rows only; how many
-rows each group lost to the reconstruction check is printed. Also checks that the grid's
-(spheres, π/5, NODE/ANODE-p1, seeds 0-4) cells reproduce the committed D2 result, which
-ran the identical code and configuration.
+Evaluates the conditions recorded in OVERNIGHT_LOG.md before the run, including the stop
+condition, which covers both geometries. The held-out metrics are skewed across seeds, so
+results are medians with interquartile ranges. Cells failing the reconstruction check are
+counted and excluded.
 """
 from __future__ import annotations
 
@@ -92,8 +78,8 @@ def main() -> None:
         print(f"  => G2 {'HOLDS' if g2 else 'REFUTED'} ({sum(mono.values())}/{len(mono)} monotone)")
 
 
-    # STOP covers BOTH geometries, as D2's S3 did when it was pre-declared over
-    # {circles, spheres}. Narrowing it after a circles probe would move the goalposts.
+    # The stop condition covers both geometries, as recorded before the run. Narrowing
+    # it after seeing a one-seed probe would change the condition after the fact.
     print("\n[STOP] any ANODE worse than NODE on BOTH median slice loss AND acc (any geometry)")
     lmed = df.groupby(["geometry", "width_over_pi", "augment_dim"]).slice_val_loss.median()
     stop = [(g, name[p], w) for g in geoms for p in anodes for w in widths

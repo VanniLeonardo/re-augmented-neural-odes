@@ -1,10 +1,8 @@
-"""D4 report + figures: matched-param NODE vs ANODE on CIFAR-10 (Dupont Table 1), + D6/D7.
+"""Report the matched-parameter CIFAR-10 experiment (Dupont Table 1).
 
-Reads the per-seed shards results/d4/d4_trajectory_s*.csv. The headline is the accuracy
-re-measured at the loosest tolerance where BOTH arms pass the reconstruction check, with
-the pre-declared refutation, R-ACC1/R-ACC2 and the comparison to Dupont Table 1
-(NODE 53.7±0.2, ANODE 60.6±0.4) -- see scripts/image_table.py for the rule. The first,
-pre-accuracy-ladder run is kept in results/d4/run1_rtx3090/ and printed as a replicate.
+Reads the per-seed files, applies the reporting rule in scripts.image_table, and writes the
+accuracy, NFE and overfitting figures. The first run, made before accuracy was re-measured
+across the tolerance ladder, is kept alongside as a replicate.
 """
 from __future__ import annotations
 import argparse

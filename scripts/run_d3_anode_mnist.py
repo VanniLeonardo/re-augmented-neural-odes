@@ -139,12 +139,9 @@ def main():
                 is_last = (epoch + 1 == args.epochs)
                 for etol in ladder:
                     rel, rnfe = recon_check(model, x_fixed, etol, device)
-                    # `test_acc` is measured at the TRAINING tolerance, whose recon status the
-                    # ladder now records (the 1e-3 rung). At the final epoch -- where the headline
-                    # number lives -- also re-measure accuracy AT this tolerance, so the reported
-                    # accuracy can be quoted at a tol that passes the reconstruction check rather
-                    # than merely assumed to be tolerance-insensitive. Final epoch only: a full
-                    # test pass at 1e-7 costs far more than one at 1e-3.
+                    # Re-measure accuracy at this tolerance, at the final epoch only. test_acc comes
+                    # from the training tolerance, and a full test pass at 1e-7 is
+                    # far more expensive than one at 1e-3.
                     if is_last:
                         keep = (model.ode_block.atol, model.ode_block.rtol)
                         model.ode_block.atol = model.ode_block.rtol = etol

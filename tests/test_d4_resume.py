@@ -1,18 +1,10 @@
-"""D4 resume/idempotency invariants.
+"""Resume invariants for the CIFAR-10 experiment.
 
-The D4 CIFAR-10 run died twice mid-flight. The harness used to `unlink()` its
-trajectory on startup, so restarting it destroyed every finished seed. Resuming is
-therefore a correctness requirement, and the *key* it resumes on is the load-bearing
-detail:
-
-  training is sequential and no checkpoint is saved, so a seed stopped at epoch 9
-  cannot be resumed at epoch 10 -- there is no model state to resume from.
-
-Keying resume on (model, seed, epoch) would train a fresh random init for the missing
-epoch and record it as the continuation of a 9-epoch run, silently corrupting the
-result. Resume must key on the COMPLETE (model, seed). These tests pin that.
+Training is sequential and no checkpoint is saved, so a seed that stopped part way cannot be
+continued. Resume therefore keys on the completed (model, seed) rather than on the epoch.
+Keying on the epoch would train a fresh model for the missing epoch and record it as the
+continuation of an earlier run.
 """
-
 import csv
 
 from scripts.run_d4_anode_cifar import FIELDS, complete_pairs, resume_trajectory
@@ -40,7 +32,8 @@ def test_complete_seed_is_recognised() -> None:
 
 
 def test_partial_seed_is_not_resumable() -> None:
-    """THE bug this guards: 9 of 10 epochs must NOT count as complete."""
+    """
+THE bug this guards: 9 of 10 epochs must NOT count as complete."""
     rows = _rows("NODE", 3, range(1, EPOCHS))  # epochs 1..9
     assert complete_pairs(rows, EPOCHS, LADDER) == set()
 

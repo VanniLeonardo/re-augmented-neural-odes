@@ -81,13 +81,10 @@ def _rewrite(path: Path, rows: list[dict], hardware: str) -> None:
 
 
 def complete_pairs(rows: list[dict], epochs: int, ladder: list[float]) -> set:
-    """(model, seed) pairs that already hold EVERY (epoch, eval_tol) cell.
+    """Return the (model, seed) pairs holding every (epoch, eval_tol) cell.
 
-    Resume keys on the completed *seed*, never on (model, seed, epoch). Training is
-    sequential and no checkpoint is saved, so a seed stopped at epoch 9 cannot be
-    resumed at epoch 10 -- there is no model state to resume from. Keying on epoch
-    would train a fresh random init for one epoch and record it as the continuation of
-    a 9-epoch run. Partial seeds are therefore dropped and re-run from scratch.
+    Resume keys on the completed seed rather than the epoch. Training is sequential and
+    no checkpoint is saved, so a seed that stopped part way cannot be continued.
     """
     want = {(e, t) for e in range(1, epochs + 1) for t in ladder}
     got: dict = {}
@@ -102,9 +99,9 @@ def complete_pairs(rows: list[dict], epochs: int, ladder: list[float]) -> set:
 
 def resume_trajectory(path: Path, epochs: int, ladder: list[float], hardware: str,
                       fresh: bool = False):
-    """Prune `path` down to the rows of COMPLETE (model, seed) pairs and return
-    (done, n_prior, n_kept). Rows of a seed that died mid-training are dropped so the
-    seed is re-run from scratch; finished seeds are never re-run and never duplicated."""
+    """Prune `path` to the rows of completed (model, seed) pairs.
+
+    Returns (done, rows_before, rows_kept)."""
     prior = [] if fresh else _read_rows(path)
     done = complete_pairs(prior, epochs, ladder)
     keep = [r for r in prior if (r["model"], int(r["seed"])) in done]
@@ -176,10 +173,8 @@ def main():
     ladder = [float(t) for t in args.eval_tols.split(",")] if args.eval_tols else [args.eval_tol]
     hardware = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu"
 
-    # Resume. Keep every row belonging to a COMPLETE (model, seed); drop rows of a seed
-    # that died mid-training (they cannot be continued -- see complete_pairs) so it is
-    # re-run from scratch. Without this the script used to unlink() the trajectory and
-    # silently destroy finished seeds.
+    # Keep rows from completed seeds and drop the rest, so an interrupted seed is re-run
+    # from scratch. See complete_pairs for why a partial seed cannot be continued.
     done, n_prior, n_kept = resume_trajectory(traj, args.epochs, ladder, hardware, args.fresh)
     if n_prior:
         print(f"[resume] {n_prior} prior rows | complete seeds: "
@@ -206,12 +201,9 @@ def main():
                 for tol in ladder:
                     nfe, rel = nfe_recon_at(model, x_fixed, tol, device, args.cap)
                     ok = int(rel == rel and rel < args.recon_thresh)
-                    # `test_acc` is measured at the TRAINING tolerance, whose recon status the
-                    # ladder now records (the 1e-3 rung). At the final epoch -- where the headline
-                    # number lives -- also re-measure accuracy AT this tolerance, so the reported
-                    # accuracy can be quoted at a tol that passes the reconstruction check rather
-                    # than merely assumed to be tolerance-insensitive. Final epoch only: a full
-                    # test pass at 1e-7 costs ~20x one at 1e-3.
+                    # Re-measure accuracy at this tolerance, at the final epoch only. test_acc comes
+                    # from the training tolerance, and a full test pass at 1e-7 is
+                    # far more expensive than one at 1e-3.
                     if is_last and not args.probe:
                         keep = (model.ode_block.atol, model.ode_block.rtol)
                         model.ode_block.atol = model.ode_block.rtol = tol

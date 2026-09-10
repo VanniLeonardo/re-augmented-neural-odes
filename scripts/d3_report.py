@@ -1,15 +1,7 @@
-"""D3 report + figures: matched-param NODE vs ANODE on MNIST (Dupont Table 1), + D6/D7.
+"""Report the matched-parameter MNIST experiment (Dupont Table 1).
 
-Reads the per-seed shards results/d3/d3_trajectory_s*.csv. The headline is the accuracy
-re-measured at the loosest tolerance where BOTH arms pass the reconstruction check, with
-the pre-declared refutation, R-ACC1/R-ACC2 and the comparison to Dupont Table 1
-(NODE 96.4±0.5, ANODE 98.2±0.1) -- see scripts/image_table.py for the rule. Produces:
-  figures/d3/test_acc.png     test acc vs epoch, NODE vs ANODE
-  figures/d3/nfe_vs_loss.png  D6: forward NFE vs test loss
-  figures/d3/nfe_and_gap.png  NFE vs epoch (D6) + train/test gap vs epoch (D7)
-  figures/d3/acc_vs_tol.png   final-epoch accuracy vs tolerance, recon-marked
-The first, pre-accuracy-ladder run is kept in results/d3/run1_rtx3090/ and printed as a
-replicate; results/d3_faithful/ is that run's separate faithful-NFE re-measurement.
+Reads the per-seed files, applies the reporting rule in scripts.image_table, and writes the
+accuracy, NFE and overfitting figures.
 """
 from __future__ import annotations
 import argparse

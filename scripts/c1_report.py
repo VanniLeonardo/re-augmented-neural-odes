@@ -1,19 +1,8 @@
-"""C1 report — solver dynamics on the trained MNIST conv ODE-Net (Chen Fig 3a-b).
+"""Report the solver-dynamics sweep (Chen Figure 3a-b).
 
-Merges the per-seed shards written by `scripts/run_c1_solver_dynamics.py`
-(results/c1/c1_solver_dynamics*.csv -- one per seed when run as a SLURM array) and
-evaluates the pre-declared refutation checks:
-
-  R-C1a  numerical error falls monotonically as tolerance tightens
-  R-C1b  cost (forward NFE, wall-clock) rises monotonically as tolerance tightens
-  R-C1c  forward time is rank-correlated with NFE (Chen Fig 3b), Spearman rho >= 0.9
-
-plus a STOP-and-flag check: a higher-order solver showing systematically LARGER error
-than a lower-order one at matched NFE would contradict numerical analysis, not just Chen.
-
-Rows failing the reconstruction check are kept and shown (the loose-tolerance rows are
-expected to fail -- that is the point of the axis) but are excluded from the faithful
-cost/error claims and marked in the table.
+Merges the per-seed files and evaluates the three conditions recorded before the run.
+Wall-clock times are only comparable within one GPU model, so the correlation between time
+and NFE is also checked within each hardware group.
 """
 from __future__ import annotations
 
@@ -115,9 +104,8 @@ def main() -> None:
         c_pass &= bool(rho >= 0.9)
         print(f"  {s:8} rho = {rho:.3f}  (n={len(g)})")
 
-    # Wall-clock is only comparable within one GPU model. A SLURM array can scatter
-    # seeds across heterogeneous hardware (we hit two different A100 MIG slice sizes),
-    # so R-C1c is re-checked within each hardware group before it is believed.
+    # Wall-clock is only comparable within one GPU model, and a SLURM array can scatter
+    # seeds across different hardware, so the correlation is re-checked per group.
     hw = ok.hardware.unique()
     if len(hw) > 1:
         print(f"\n  [R-C1c re-checked within hardware -- {len(hw)} GPU types present, so pooled\n"
