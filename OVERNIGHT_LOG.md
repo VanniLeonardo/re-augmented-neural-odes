@@ -785,3 +785,35 @@ Cells failing recon are excluded from the statistics and counted.
   accuracy, the STOP fires and it goes to the co-author, not to me.
 - **Budget:** 2.1–2.7 min/cell single-threaded → ~55 min on 14 workers (local Ryzen 7 7700X; the
   2-D toy is faster on CPU). **If wall-clock exceeds 3 h, stop and flag.** Every row records its CPU.
+
+## [5] §6 MISSING-SLICE GRID — RESULT (300 cells; `results/slice_grid/`, `figures/slice_grid/`)
+300/300 cells written, 0 failed, **1.64 h** (pre-declared ~55 min — the probe ran 4 workers; 14
+workers share 8 physical cores, so cells took ~4 min instead of ~2.5; inside the 3 h stop-flag).
+6/300 cells fail recon (≤1 per group; 5 of 6 marginal at recon 0.012–0.016 vs 0.01) and are
+excluded. RAW held-out-slice accuracy, median [IQR] over 10 seeds:
+| | π/8 | π/5 | π/3 |
+|---|---|---|---|
+| spheres NODE | 0.926 [0.841,1.000] | 0.744 [0.615,0.980] | 0.701 [0.549,0.998] |
+| spheres ANODE p1/p2/p3/p5 | 1.000 all | 1.000 all | 0.972 / **1.000** / 0.986 / 0.983 |
+| circles NODE | 0.923 [0.669,1.000] | 0.812 [0.651,0.997] | 0.854 [0.623,0.998] |
+| circles ANODE p1/p2/p3/p5 | 1.000 all | 0.993 / 1.000 / 1.000 / 0.998 | 0.992 / **0.998** / 0.941 / 0.968 |
+- **G1 HOLDS** — every ANODE ≥ NODE (median slice acc) at every width on spheres.
+- **G2 HOLDS as declared** — A_p(w) non-decreasing for 4/4 p (+0.074 → +0.256 → +0.27–0.30).
+  **But weaker than "monotone" suggests:** the π/5 → π/3 step is inside NODE's IQR, and on
+  **loss** the advantage *shrinks* there (NODE 3.14 → 2.22 while ANODE rises 0.000 → 0.001–0.13).
+  Honest reading: grows from π/8 to π/5, then plateaus. ANODE itself degrades on the widest hole.
+- **G3 HOLDS — my prediction ("G3 likely REFUTED") was WRONG.** Circles advantage at π/3 is
+  +0.087 to +0.144 for all p. The one-seed probe (circles NODE 0.998 vs ANODE-p5 0.950) was an
+  outlier from NODE's heavy-tailed distribution — exactly why §6 asked for 10 seeds. Circles is
+  **not** monotone in width (NODE 0.923 → 0.812 → 0.854); G2 was declared for spheres only, so this
+  is a characterisation, not a refutation.
+- **STOP: none.** No ANODE is worse than NODE on both median loss and accuracy anywhere.
+- **Observed-region accuracy ≥ 0.998 for every model, NODE included** — NODE's failure is specific
+  to extrapolation into the unobserved wedge, not general underfitting (the §6 metric doing its job).
+- **Augmentation dose (characterisation; bears on DEVIATIONS A12):** p = 2 is best at the widest
+  wedge on both geometries; p = 3/5 are slightly worse (circles p3 0.941 [0.842,0.981] vs p2 0.998
+  [0.996,1.000] is the one clear separation). More augmentation is not monotonically better for
+  held-out generalisation; Dupont chose p = 5 for fit, a different criterion.
+- **Consistency: EXACT.** The grid's (spheres, π/5, NODE/ANODE-p1, seeds 0–4) cells reproduce the
+  committed D2 held-out accuracies with max difference **0.0000** over 10 matched cells — fresh
+  runs, two months later, single-threaded instead of multi-threaded, same machine.

@@ -11,6 +11,30 @@ Format: newest first. Each entry: *what changed*, *why*, *scope tag* (`infra` / 
 
 ---
 
+## Phase 2b — extras: §6 missing-slice grid + CI (2026-09-10)
+
+### experiment
+- **§6 grid** (REPLICATION_PLAN P2-18): augmentation p {0,1,2,3,5} × wedge width {π/8, π/5, π/3}
+  × {spheres, circles} × 10 seeds = 300 recon-checked runs of D2's harness. G1/G2/G3 hold, STOP
+  clean; the pre-registered prediction that the circles check would fail was wrong. Circles, not
+  moons/spirals, is the second geometry (standing no-new-datasets rule).
+
+### infra
+- `scripts/run_slice_grid.py`: parallel CPU driver (spawned single-thread workers, parent-only
+  writes, resumable). `run_missing_slice.run()` now returns its row, takes any `ANODE-p<k>`, adds
+  the observed-region-only metric, and records the CPU.
+- **Fix:** `make d2` wrote to `results/slice/` while `make fig-d2` read `results/slice_spheres/`,
+  so `reproduce-all` would have re-run Fig 9 and plotted the stale data.
+- **CI** (P2-21): `.github/workflows/reproducibility.yml` builds the pinned container without
+  cache, runs `make smoke` and `make figures`, and fails if figure generation changes any
+  committed result. Green on first run.
+
+### report
+- `scripts/slice_grid_report.py` (G1/G2/G3, STOP over both geometries, D2 consistency check);
+  wired into `make figures` and `reproduce-all`. `DEVIATIONS.md` A12 updated.
+
+---
+
 ## Phase 2 — close-out: D4 finished, C1 built, D8 made faithful, packaging (2026-09-09 → 2026-09-10)
 
 ### infra

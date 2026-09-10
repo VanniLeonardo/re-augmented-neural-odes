@@ -32,7 +32,7 @@ help:
 	@echo "  docker-smoke     Build the CPU image and run 'make smoke' inside it"
 	@echo ""
 	@echo "Full re-run from scratch (GPU; costs in parentheses are measured or estimated):"
-	@echo "  reproduce-all    Everything below (~15-20 GPU-h)"
+	@echo "  reproduce-all    Everything below (~15-20 GPU-h + 1.6 h CPU)"
 	@echo "  reproduce-dupont d1 d2 d3 d4 d8      Dupont ANODE (primary)"
 	@echo "  reproduce-chen   c1 c2 c3 c4         Chen NODE claims C1-C4"
 	@echo ""
@@ -45,6 +45,7 @@ help:
 	@echo "  c2  bwd/fwd NFE ratio vs tolerance          (~1-2 h)"
 	@echo "  c3  NFE growth over training + stiffening   (~3 h, GPU)"
 	@echo "  c4  O(1) memory vs NFE                      (~0.5 h, GPU)"
+	@echo "  slice-grid  §6 extension: Fig 9 made systematic (1.6 h, CPU, 14 workers -- measured)"
 	@echo ""
 	@echo "  coursework       Pre-replication course experiments (NOT part of the submission)"
 
@@ -85,7 +86,7 @@ test:
 # No GPU, no training, no network. Each target also prints the pre-declared
 # refutation check for its claim, so the numbers are auditable, not just drawn.
 # --------------------------------------------------------------------------
-figures: fig-d1 fig-d2 fig-d3 fig-d4 fig-d8 fig-c1 fig-c2 fig-c3 fig-c4
+figures: fig-d1 fig-d2 fig-d3 fig-d4 fig-d8 fig-c1 fig-c2 fig-c3 fig-c4 fig-slice-grid
 	@echo ""
 	@echo "All figures regenerated under figures/ from committed results/*.csv."
 
@@ -127,7 +128,7 @@ fig-c4:  ## Chen Table 1 memory column, corrected: O(1) memory vs NFE
 # FULL RE-RUN (GPU). Each target regenerates the CSVs its fig-* target consumes.
 # Settings are the ones that produced the committed results (see OVERNIGHT_LOG.md).
 # --------------------------------------------------------------------------
-reproduce-all: reproduce-dupont reproduce-chen figures
+reproduce-all: reproduce-dupont reproduce-chen slice-grid figures
 	@echo "reproduce-all complete. Numbers under results/, figures under figures/."
 
 reproduce-dupont: d8 d1 d2 d3 d4

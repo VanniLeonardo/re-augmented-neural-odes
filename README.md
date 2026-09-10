@@ -1,5 +1,7 @@
 # A replication of Augmented Neural ODEs (Dupont et al., 2019)
 
+[![reproducibility](https://github.com/VanniLeonardo/NeuralODEs/actions/workflows/reproducibility.yml/badge.svg?branch=rescience-c-replication)](https://github.com/VanniLeonardo/NeuralODEs/actions/workflows/reproducibility.yml)
+
 A [ReScience C](https://rescience.github.io/) replication. **Primary target:** Dupont,
 Doucet & Teh, *Augmented Neural ODEs* (NeurIPS 2019). **Secondary:** four solver/memory
 claims from Chen, Rubanova, Bettencourt & Duvenaud, *Neural Ordinary Differential
@@ -26,6 +28,10 @@ canonical artifacts** and are committed; figures are not. Every figure in the pa
 rebuilt from those CSVs, with no GPU, no training and no network — and each target also
 prints the **pre-declared refutation check** for its claim, so you can audit the numbers
 rather than just look at the picture.
+
+The same path runs in CI on every push ([`.github/workflows/reproducibility.yml`](.github/workflows/reproducibility.yml)):
+a no-cache build of the pinned container, `make smoke`, `make figures`, and a check that
+regenerating the figures modifies no committed result.
 
 To re-run the experiments themselves (GPU, ~15–20 h total), see
 [Reproducing from scratch](#reproducing-from-scratch). `make help` lists every target
@@ -97,6 +103,35 @@ baselines, not a Table-1 claim (`DEVIATIONS.md` C4).
 | **C3** | NFE increases during training (Fig. 3d) | Reproduced. At a recon-faithful 1e-7 the MNIST conv field's NFE grows **384 → 738** over 6 epochs, and the faithful tolerance itself tightens as training proceeds. | `make fig-c3` |
 | **C4** | ODE-Net memory is O(1) in effective depth via the adjoint (Table 1, memory) | Reproduced (**corrected experiment** — the coursework swept the wrong axis). Adjoint **+0.0007 MB/NFE** (flat) vs direct backprop **+31.8 MB/NFE**. | `make fig-c4` |
 
+### Extension: Fig 9 made systematic
+
+Dupont's Fig 9 removes one wedge from one geometry. `make fig-slice-grid` sweeps augmentation
+p ∈ {0, 1, 2, 3, 5} × wedge width {π/8, π/5, π/3} × {spheres, circles} × 10 seeds — 300 runs,
+each Fig 9's exact recon-checked harness (6 fail the check and are excluded). Held-out-wedge
+accuracy, median over seeds:
+
+| | π/8 | π/5 | π/3 |
+|---|---|---|---|
+| spheres — NODE | 0.926 | 0.744 | 0.701 |
+| spheres — best ANODE | 1.000 | 1.000 | 1.000 (p=2) |
+| circles — NODE | 0.923 | 0.812 | 0.854 |
+| circles — best ANODE | 1.000 | 1.000 | 0.998 (p=2) |
+
+- ANODE generalises better than NODE **at every width, on both geometries, for every p ≥ 1**. No
+  pre-declared check failed.
+- On spheres the advantage **grows from π/8 to π/5, then plateaus**: the π/5 → π/3 step is inside
+  the seed spread, and on *loss* the advantage shrinks there, because ANODE starts to degrade on
+  the widest hole too.
+- The circles gap is **smaller than on spheres and not monotone in width**. A one-seed probe had
+  suggested circles would show no gap at all, and we predicted that check would fail; ten seeds
+  showed the probe seed was an outlier.
+- The failure is **specific to the unobserved region**: every model, NODE included, scores ≥ 0.998
+  on the observed region.
+- **More augmentation is not monotonically better**: p = 2 is best at the widest wedge on both
+  geometries (Dupont chose p = 5 for fit, a different criterion — `DEVIATIONS.md` A12).
+- The grid's π/5 spheres cells **reproduce the committed Fig 9 run exactly** (10/10 matched cells,
+  identical held-out accuracy).
+
 ### Out of scope
 
 Rubanova et al. 2019 (Latent ODE / ODE-RNN, sine, spiral) is **cut from the submission**;
@@ -151,7 +186,9 @@ faster on CPU and avoid GPU contention.
 reproduces the reported numbers *within the documented spread*, not bit-for-bit; adaptive
 solvers and cuDNN kernel selection are not bit-reproducible across machines. Figures
 rebuilt from committed CSVs *are* deterministic (`results/c2/c2_surface.csv` regenerates
-byte-identically).
+byte-identically). CPU toy runs are more reproducible still: the §6 grid re-ran Fig 9's
+cells two months later, single- instead of multi-threaded, and matched the committed held-out
+accuracies exactly.
 
 ### Cluster runs
 
@@ -201,6 +238,7 @@ use Docker.
 ```text
 NeuralODEs/
 ├── Makefile                      # every reproduction entry point (`make help`)
+├── .github/workflows/            # CI: the reviewer path in the pinned container, every push
 ├── REPLICATION_PLAN.md           # scope, claim-by-claim gap analysis, compute budget
 ├── DEVIATIONS.md                 # where we differ from the papers AS DESCRIBED
 ├── PROVENANCE.md                 # copying provenance: did we copy author code? (no)
@@ -212,6 +250,7 @@ NeuralODEs/
 │   ├── d3/ d3_faithful/          #   D3   MNIST matched-param + faithful NFE
 │   ├── d4/                       #   D4   CIFAR-10 matched-param
 │   ├── crossing/                 #   D8   1-D crossing flow
+│   ├── slice_grid/               #   §6   Fig 9 made systematic (p × width × geometry)
 │   ├── c1/                       #   C1   solver dynamics (per-seed shards)
 │   ├── c2/ c2_circles/           #   C2   bwd/fwd NFE surface
 │   ├── mnist_nfe/ mnist_stiffening/  # C3 NFE growth + stiffening mechanism
