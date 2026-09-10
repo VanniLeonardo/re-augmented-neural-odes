@@ -183,21 +183,47 @@ this project were retracted once the check was introduced.
 
 \subsection{Deviations from the original descriptions}
 \label{sec:deviations}
-% Digest of DEVIATIONS.md -- a first-class deliverable of this replication.
-% Emphasise the ones that could move a number: data-space integration (no stem),
-% toy field width, training tolerance vs the library defaults, epoch budgets,
-% 5 seeds vs Dupont's 20 repeats, parameter counts ~0.5-1% above the stated targets.
+
+We reimplemented from the text, and the text does not fix everything. Where a choice was
+unstated we made one and recorded it; where we knowingly departed from a stated choice we say so
+here. Table~\ref{tab:deviations} lists the departures that could plausibly move a number. A
+fuller register, including departures we judged immaterial and several we corrected during the
+work, accompanies the code.
+
+Three deserve emphasis. First, we train at a solver tolerance of $10^{-3}$ while the original
+uses the solver library's defaults, which are far tighter; this is a concession to compute, and
+Section~\ref{sec:recon} is precisely the machinery that keeps it honest, since we re-measure at
+tolerances that pass the reconstruction check rather than trusting the training tolerance.
+Second, we run five seeds against the original's twenty repeats on the toy task, so our
+uncertainty intervals are wider than the original's and small differences between arms should not
+be over-read. Third, for the secondary claims we integrate with an explicit Runge--Kutta method
+(\texttt{dopri5}) where Chen et al. used implicit Adams; that is a deliberate choice --- it is the
+method a reader reaching for \texttt{torchdiffeq} today will use --- but it is not a neutral one,
+and it turns out to matter for claim 6.
 
 \begin{table}[h]
   \centering
-  \caption{Deviations from the papers as described. TODO: fill from DEVIATIONS.md.}
+  \small
+  \caption{Departures from the papers as described that could affect a reported number.}
   \label{tab:deviations}
-  \begin{tabular}{lll}
+  \begin{tabularx}{\linewidth}{@{}lXX@{}}
     \toprule
-    Deviation & Reason & Expected effect on the result \\
+    & \textbf{As described} & \textbf{Here, and why} \\
     \midrule
+    Training tolerance & solver library defaults & $10^{-3}$, for compute; every reported
+      quantity re-measured at a reconstruction-checked tolerance \\
+    Repeats & 20 (toy task) & 5 seeds (10 for the skewed held-out metrics); wider intervals \\
+    Solver & implicit Adams (Chen et al.) & \texttt{dopri5}, the current default choice;
+      bears directly on claim 6 \\
+    Toy objective & regression to $\pm1$ under MSE & binary classification under cross-entropy;
+      the flow-level mechanism is unchanged, absolute losses are not comparable \\
+    Toy learning rate & $10^{-3}$ & $3\times10^{-3}$ \\
+    Parameter counts & 84{,}395 / 84{,}816 (MNIST) & 85{,}316 / 85{,}462; a flattening readout,
+      matched between arms to within 2\% \\
+    Training budget & 50 epochs (toy) & swept over $\{25,\dots,1000\}$, so the original's
+      budget is one point on a curve rather than an assumption \\
     \bottomrule
-  \end{tabular}
+  \end{tabularx}
 \end{table}
 
 \subsection{Experimental setup and code}
