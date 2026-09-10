@@ -1,0 +1,16 @@
+*.aux
+*.idx
+*.log
+*.toc
+*.ist
+*.bbl
+*.blg
+*.bcf
+*.run.xml
+*.out
+
+
+# Build outputs: metadata.tex is generated from metadata.yaml by `make`,
+# article.pdf is the compiled paper. Sources are committed, outputs are not.
+metadata.tex
+article.pdf

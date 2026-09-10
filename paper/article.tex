@@ -1,0 +1,16 @@
+\documentclass{rescience}
+
+% LOCAL ADDITION to the upstream template: rescience.cls loads tabularx but not
+% booktabs, and the result tables use \toprule/\midrule/\bottomrule.
+\usepackage{booktabs}
+
+\begin{document}
+\input{header.tex}
+\input{content.tex}
+
+\hypersetup{linkcolor=black,urlcolor=darkgray}
+\renewcommand\emph[1]{{\bfseries #1}}
+\setlength\bibitemsep{0pt}
+\printbibliography
+
+\end{document}

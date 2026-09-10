@@ -1,0 +1,114 @@
+# ReScience C submission metadata.
+# Filled where the repository already determines the answer; every remaining
+# TODO needs a human decision (co-author identity, ORCIDs, Zenodo DOI, abstract).
+
+# Title of the article:
+#  - "[Re]" prefix = successful replication, "[¬Re]" = failed replication.
+#  - We use [Re]: the central claims of the target paper reproduce. Two absolute
+#    numbers undershoot and one secondary Chen claim does not reproduce; those are
+#    reported as partial results in the paper, not as a failed replication. If the
+#    editors read the MNIST NODE undershoot as a failure, this prefix must change.
+title: "[Re] Augmented Neural ODEs"
+
+# List of authors with name, orcid number, email and affiliation
+# Affiliation "*" means contact author (required even for single-authored papers)
+authors:
+  - name: Leonardo Vanni
+    orcid:                       # TODO
+    email: leogarda@gmail.com    # TODO: institutional address if preferred
+    affiliations: 1,*            # * is for contact author
+
+  - name: TODO Co-author         # TODO: the co-author writing the manuscript
+    orcid:                       # TODO
+    email:                       # TODO
+    affiliations: 1
+
+# List of affiliations with code (corresponding to author affiliations), name
+# and address.
+affiliations:
+  - code:    1
+    name:    Bocconi University          # TODO: confirm department/school
+    address: Milan, Italy
+
+# List of keywords (adding the programming language might be a good idea)
+keywords: rescience c, python, pytorch, neural ordinary differential equations, augmented neural odes, torchdiffeq
+
+# Code URL and DOI/SWH (url is mandatory for replication, doi after acceptance)
+code:
+  - url: https://github.com/VanniLeonardo/NeuralODEs
+  - doi:      # TODO: mint a Zenodo DOI for the tagged submission commit
+  - swh:      # TODO: or a Software Heritage identifier
+
+# Data URL and DOI (optional if no data)
+# MNIST and CIFAR-10 are standard public datasets fetched by the data loaders at
+# run time; no data artifact is deposited. Per-seed result CSVs live in the code
+# repository under results/ and are covered by the code DOI above.
+data:
+  - url:
+  - doi:
+
+# Information about the original article that has been replicated
+replication:
+ - cite: "Emilien Dupont, Arnaud Doucet and Yee Whye Teh. Augmented Neural ODEs.
+          Advances in Neural Information Processing Systems 32 (NeurIPS 2019)."
+ - bib:  dupont2019augmented
+ - url:  https://arxiv.org/pdf/1904.01681
+ - doi:  10.48550/arXiv.1904.01681
+
+# Don't forget to surround abstract with double quotes
+abstract: "TODO: written last, once the results sections are final. Must state what
+           was replicated (Dupont et al. 2019, primary; four solver/memory claims
+           of Chen et al. 2018, secondary), that the reimplementation is from the
+           papers as described, the headline outcome including the partial results,
+           and the tolerance-faithfulness protocol that the numbers depend on."
+
+# Bibliography file (yours)
+bibliography: bibliography.bib
+
+# Type of the article
+# Type can be: Editorial / Letter / Replication
+type: Replication
+
+# Scientific domain of the article (e.g. Computational Neuroscience)
+domain: Machine Learning
+
+# Coding language (main one only if several)
+language: Python
+
+
+# To be filled by the author(s) after acceptance
+# -----------------------------------------------------------------------------
+
+# For example, the URL of the GitHub issue where review actually occured
+review:
+  - url:
+
+contributors:
+  - name:
+    orcid:
+    role: editor
+  - name:
+    orcid:
+    role: reviewer
+  - name:
+    orcid:
+    role: reviewer
+
+# This information will be provided by the editor
+dates:
+  - received:
+  - accepted:
+  - published:
+
+# This information will be provided by the editor
+article:
+  - number:
+  - doi:
+  - url:
+
+# This information will be provided by the editor
+journal:
+  - name:   "ReScience C"
+  - issn:   2430-3658
+  - volume:
+  - issue:
