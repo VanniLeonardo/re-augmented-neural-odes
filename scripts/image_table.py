@@ -1,7 +1,9 @@
 """Shared reporting rule for the image experiments, MNIST and CIFAR-10.
 
 Accuracy and cost are quoted at the loosest tolerance where both models pass the
-reconstruction check on every seed at the final epoch. Accuracy is re-measured at that
+reconstruction check on every seed at the final epoch, in every committed run of the
+experiment. Separate runs train separate fields, and a tolerance that integrates one run's
+fields need not integrate another's, so a rung that fails in any run is not used. Accuracy is re-measured at that
 tolerance rather than taken from the training tolerance. Keeping the rule in one place
 stops the two experiments from drifting apart.
 """
@@ -32,6 +34,14 @@ def load_shards(results_dir: Path, stem: str) -> pd.DataFrame:
     return df
 
 
+def failing_rungs(path: Path) -> set:
+    """Tolerances at which some model fails the check on some seed at the final epoch."""
+    r = pd.read_csv(path)
+    r = r[r.epoch == r.epoch.max()]
+    worst = r.groupby("eval_tol").recon_ok.min()
+    return set(worst[worst < 1].index)
+
+
 def per_epoch(df: pd.DataFrame) -> pd.DataFrame:
     """One row per (model, seed, epoch): per-epoch metrics repeat across ladder rungs."""
     return df.drop_duplicates(["model", "seed", "epoch"])
@@ -42,7 +52,8 @@ def _ms(x: pd.Series) -> str:
 
 
 def faithful_table(df: pd.DataFrame, nfe_col: str, dupont: dict, fig_dir: Path,
-                   replicate: tuple[Path, str] | None = None) -> None:
+                   replicate: tuple[Path, str] | None = None,
+                   other_runs: tuple[Path, ...] = ()) -> None:
     last = df.epoch.max()
     fin = df[df.epoch == last]
     arms = sorted(fin.model.unique(), key=lambda m: m != "NODE")
@@ -60,13 +71,21 @@ def faithful_table(df: pd.DataFrame, nfe_col: str, dupont: dict, fig_dir: Path,
 
     both = sorted(t for t, g in fin.groupby("eval_tol")
                   if all(g[g.model == m].recon_ok.eq(1).all() for m in arms))
+    for path in [*other_runs, *([replicate[0]] if replicate else [])]:
+        if not path.exists():
+            continue
+        bad = [t for t in both if t in failing_rungs(path)]
+        if bad:
+            print(f"\n{path} fails the check at {[f'{t:.0e}' for t in bad]}; "
+                  "those rungs are not used")
+        both = [t for t in both if t not in bad]
     if not both:
         print("\nNO tolerance has BOTH arms recon_ok on every seed -- nothing reportable as "
               "faithful. Recorded as data; no headline.")
         return
     tf = max(both)
     at = {m: fin[(fin.model == m) & (fin.eval_tol == tf)] for m in arms}
-    print(f"\nLoosest tolerance with BOTH arms recon_ok on every seed: {tf:.0e}  <- headline")
+    print(f"\nLoosest tolerance with BOTH arms recon_ok on every seed, in every run: {tf:.0e}  <- headline")
 
     print(f"\n[R-ACC1] accuracy at train tol {train_tol:.0e} vs at faithful tol {tf:.0e} "
           "(REFUTED if |delta| >= 0.5 pp)")

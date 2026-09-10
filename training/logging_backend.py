@@ -159,7 +159,7 @@ class WandbLogger(BaseLogger):
         # wandb backend never blocks on a login prompt by default.
         resolved_mode = mode or os.environ.get("WANDB_MODE", "offline")
         self._run = wandb.init(
-            project=project or os.environ.get("WANDB_PROJECT", "neural-odes-30562"),
+            project=project or os.environ.get("WANDB_PROJECT", "re-augmented-neural-odes"),
             name=run_name,
             config=self.config,
             mode=resolved_mode,

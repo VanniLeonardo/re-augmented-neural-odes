@@ -12,7 +12,7 @@
 \newcommand{\resfig}[3]{%
   \begin{figure}[h]\centering
   \IfFileExists{#1}{\includegraphics[width=\linewidth]{#1}}%
-    {\fbox{\parbox{0.9\linewidth}{\centering\vspace{1em}\small\texttt{#1}\\
+    {\fbox{\parbox{0.9\linewidth}{\centering\vspace{1em}\small\texttt{\detokenize{#1}}\\
      not built. Run \texttt{make figures} in the repository root.\vspace{1em}}}}
   \caption{#2}\label{#3}\end{figure}}
 
@@ -129,11 +129,18 @@ available to us.
 All models integrate a learned vector field $f_\theta$ from $t=0$ to $t=1$ and classify the
 terminal state with a single linear map. The linear readout is required by the claims under
 test. A nonlinear head could separate the classes by itself, which would make the properties
-of the flow irrelevant. An augmented model, written ANODE, appends $p$ zero-valued dimensions
+of the flow irrelevant. The one exception is claim 1, whose model has no readout at all. Its
+output is the data coordinate of the terminal state. A learnable readout $w\,\phi(x)+b$ with
+$w<0$ would reverse the order that the flow preserves, so a one-dimensional model could
+represent the crossing map through the readout alone. Proposition 1 is a statement about the
+flow, and its error floor applies to the flow without a readout. An augmented model, written ANODE, appends $p$ zero-valued dimensions
 to the state before integration. Setting $p=0$ gives the plain Neural ODE, written NODE.
 
-For the two-dimensional tasks, $f_\theta$ is a multilayer perceptron of width 32 that takes
-the state and the time, following Appendix F.1.1 of the original paper. It is applied
+For the one- and two-dimensional tasks, $f_\theta$ is a multilayer perceptron of width 32
+that takes the state and the time, following Appendix F.1.1 of the original paper. Claim 1
+also uses the training settings Appendix F.2.1 gives for $d=1$: 3000 points, batch size 64,
+learning rate $10^{-3}$ and 50 epochs, with $p=1$ and with $p=5$, the value the original found
+best. It is applied
 directly to the raw input. No encoder precedes the flow, because a learned encoder is itself
 a diffeomorphism and would supply the warp that the topological argument assumes is absent.
 
@@ -191,11 +198,15 @@ the flow, and it is cheap enough to run on every measurement.
 Two reporting rules follow. First, a quantity compared between two models is quoted at the loosest tolerance at which both
 models pass the check on every seed. This prevents either model from being favoured by a
 tolerance that suits only it. Second, measurements that fail the check are
-reported rather than discarded, because they are evidence about the tolerance axis.
+reported rather than discarded, because they are evidence about the tolerance axis. Where an
+experiment was run more than once, a tolerance counts as checked only if it passes in every
+run, since separate runs train separate fields. The toy experiments of claims 2 and 3 were
+evaluated at a single tolerance, $10^{-6}$, so for them the first rule reduces to checking that
+tolerance.
 
-The consequences are visible in the results below. At the solver library default of $10^{-3}$,
-the one-dimensional experiment of claim 1 fails the check for all ten trained models, and the
-worst reconstructs its input with a relative error above 10. In the image experiments the
+The consequences are visible in the results below. At $10^{-3}$, the tolerance the original
+papers specify, the one-dimensional experiment of claim 1 fails the check for 11 of its 15
+trained models, and the worst reconstructs its input with a relative error of 25. In the image experiments the
 check fails at the tolerance used for training, on every model and every seed.
 
 \subsection{Deviations from the original descriptions}
@@ -206,10 +217,13 @@ unstated we made one and recorded it. Where we departed from a stated choice we 
 Table~\ref{tab:deviations}, which covers the departures that could move a number. A fuller
 register accompanies the code.
 
-Three departures matter most. We train at a solver tolerance of $10^{-3}$, while the original
-uses the solver library defaults, which are tighter. This was a concession to compute, and the
-reconstruction check is what keeps it honest, since every reported quantity is re-measured at
-a tolerance that passes the check. We run five seeds against the original twenty repeats on
+One choice is not a departure but needs stating first. We train at a solver tolerance of
+$10^{-3}$, the tolerance both original papers specify. The reconstruction check shows that this
+tolerance does not integrate the trained fields, so we quote every result at a tolerance that
+passes the check rather than at $10^{-3}$. This is where our reporting differs from the
+original protocol.
+
+Two departures matter most. We run five seeds against the original twenty repeats on
 the toy task, so our intervals are wider and small differences between arms should not be
 over-read. For the secondary claims we integrate with an explicit Runge--Kutta method where
 Chen et al.\ used implicit Adams. That choice is deliberate, because it is the method a
@@ -225,8 +239,8 @@ Section~\ref{sec:claim6} shows that it matters for claim 6.
     \toprule
     & \textbf{As described} & \textbf{Here, and why} \\
     \midrule
-    Training tolerance & solver library defaults & $10^{-3}$, for compute. Every reported
-      quantity is re-measured at a checked tolerance \\
+    Reporting tolerance & $10^{-3}$, as for training & the loosest tolerance that passes the
+      reconstruction check. Training stays at $10^{-3}$ \\
     Repeats & 20 (toy task) & 5 seeds, and 10 for the skewed held-out metrics. Wider
       intervals \\
     Solver & implicit Adams (Chen et al.) & \texttt{dopri5}, the current default choice.
@@ -244,8 +258,10 @@ Section~\ref{sec:claim6} shows that it matters for claim 6.
 
 \subsection{Experimental setup and code}
 
-Every experiment uses at least five seeds. The held-out metrics of claim 3 are skewed across
-seeds, so those use ten. We report the mean and standard deviation for image accuracy,
+Most experiments use five seeds. The held-out metrics of the claim-3 extension are skewed
+across seeds, so those use ten. Two use three: claim 8, and the convolutional part of the
+claim-6 diagnosis. The peak memory measured for claim 8 does not depend on the seed, so its
+three seeds are identical replicates rather than independent samples. We report the mean and standard deviation for image accuracy,
 following the original, and the median with interquartile range where the across-seed
 distribution is skewed. The statistic used is stated with each result.
 
@@ -290,25 +306,33 @@ classes to opposite constants can do no better than collapsing them onto one val
 targets $\pm 1$ that gives a mean squared error of exactly 1. This value separates a model
 that is structurally obstructed from one that is merely undertrained.
 
-Both arms pass the reconstruction check on every seed at $10^{-7}$, and we quote the comparison
-there. The Neural ODE reaches a median MSE of \textbf{1.0002} over five seeds, with a range of
-1.0000 to 1.0003. The augmented model reaches \textbf{0.0007}, with a range of 0.0001 to
-0.0013. Forward NFE is 308 against 272. The Neural ODE sits at the predicted floor rather than
-below it, so the claim reproduces in its strong form.
+We train with the settings the original gives for $d=1$ and evaluate on a ladder of
+tolerances from $10^{-3}$ to $10^{-9}$. Four of the five Neural ODE seeds and every augmented
+seed pass the reconstruction check at $10^{-7}$, and we quote the comparison there. The Neural
+ODE reaches a median MSE of \textbf{1.0001}, with a range of 1.0001 to 1.0002. Both augmented
+models, with $p=1$ and $p=5$, reach \textbf{0.0000}. Forward NFE is 305 against 206 and 170.
+The Neural ODE sits at the predicted floor rather than below it, so the claim reproduces in its
+strong form.
 
-This experiment also shows the effect of tolerance most clearly. At the solver library default
-of $10^{-3}$, the reconstruction check fails for all ten trained models, and the worst
-reconstructs its input with a relative error above 10. The MSE values at that tolerance are
+The fifth Neural ODE seed fails the check at every tolerance we tried. Its reconstruction error
+falls steadily as the tolerance tightens, from 25 at $10^{-3}$ to 0.014 at $10^{-9}$, just above
+the threshold of 0.01. Its field is stiffer than the others and needs a tighter tolerance than
+our ladder reaches. Its MSE is 1.0000 at every tolerance. We report it and leave it out of the
+comparison, as we recorded before running the extended ladder.
+
+This experiment also shows the effect of tolerance most clearly. At $10^{-3}$, the tolerance the
+original specifies, the reconstruction check fails for 11 of the 15 trained models, and the
+worst reconstructs its input with a relative error of 25. The MSE values at that tolerance are
 close to those above, so the conclusion is robust, but at that tolerance it was not
-established. The augmented model is also the easier one to integrate. It passes the check from
-$10^{-5}$, while the Neural ODE requires $10^{-7}$, because its flow must steepen to
-approximate a map it cannot represent.
+established. The augmented models are also the easier ones to integrate. They pass the check on every
+seed from $10^{-5}$, while the Neural ODE needs $10^{-7}$ or tighter, because its flow must
+steepen to approximate a map it cannot represent.
 
 \resfig{../figures/crossing/crossing_flow.png}
   {Claim 1. Left: median error against solver tolerance. The Neural ODE sits at the error
-   floor of 1 predicted by Proposition 1, and the augmented model three orders below it.
-   Right: forward-backward reconstruction error, with the threshold marked. Both arms fail the
-   check at the library default of $10^{-3}$.}
+   floor of 1 predicted by Proposition 1, and the augmented models far below it. Right:
+   forward-backward reconstruction error, with the threshold marked. At $10^{-3}$, the
+   tolerance the original specifies, most models fail the check.}
   {fig:crossing}
 
 \subsubsection{Claim 2: cost growth with training budget}
@@ -322,10 +346,11 @@ budget, with dense accuracies of 0.996 and 1.000. The two models are therefore s
 the cost of the flow rather than by accuracy. The pattern repeats on the thinner circles
 geometry, with growth factors of 1.37 and 1.04.
 
-Three of sixty measurements fail the reconstruction check. All three are one seed at the three
-largest budgets, whose flow becomes too stiff to integrate at $10^{-6}$. That seed is the most
-extreme instance of the effect under study. We report the medians including it and note that
-it cannot be measured at this tolerance.
+Three of sixty measurements fail the reconstruction check: one seed at a budget of 200, and
+another at 500 and 1000. Their flows become too stiff to integrate at $10^{-6}$, which makes
+them the most extreme instances of the effect under study. The factors above are medians over
+all five seeds. Restricted to the four seeds that pass the check at both ends of the sweep, the
+growth factor of the Neural ODE is 1.37, so the effect holds without them.
 
 \resfig{../figures/budget/nfe_vs_epoch.png}
   {Claim 2. Forward NFE against training budget on concentric spheres, at a checked tolerance.
@@ -360,9 +385,11 @@ $+0.30$ at $\pi/3$. The last step lies inside the across-seed spread. Measured b
 than accuracy, the advantage shrinks at the widest wedge, because the augmented model also
 degrades there. A large enough hole reduces the performance of both models, and augmentation
 does not make an unobserved region free. On the second geometry the gap is smaller and is not
-monotone in width. Two further observations follow from the sweep. Every model, including the
-Neural ODE, scores at least 0.998 on the observed region, so the failure is specific to
-extrapolation into the gap rather than a general fitting problem. More augmentation is also
+monotone in width. Two further observations follow from the sweep. On the observed region the
+median run scores at least 0.998 in every cell, the Neural ODE cells included. Individual runs
+dip lower, 27 of 294 below 0.998 and the lowest at 0.818, but these dips are small beside the
+held-out failure, which is specific to extrapolation into the gap rather than a general fitting
+problem. More augmentation is also
 not uniformly better, since $p=2$ generalises best at the widest wedge on both geometries.
 
 \resfig{../figures/slice_grid/slice_grid.png}
@@ -376,11 +403,11 @@ not uniformly better, since $p=2$ generalises best at the widest wedge on both g
 
 Table~\ref{tab:table1} gives our matched-parameter results next to the original values. Each
 is quoted at the loosest tolerance at which both arms pass the reconstruction check on every
-seed. The ordering asserted by the claim reproduces on both datasets. The augmented model is
-more accurate by 3.9 percentage points on MNIST and by 6.4 on CIFAR-10. It is also cheaper,
-requiring 1.65 to 2.10 times fewer function evaluations on MNIST and 1.24 to 1.93 times fewer
-on CIFAR-10, across the checked tolerances and two independent runs. We give these as ranges
-because the accuracy figures are stable across runs while the NFE ratio is not.
+seed, in every run of the experiment we committed. The ordering asserted by the claim reproduces on both datasets. The augmented model is
+more accurate by 3.9 percentage points on MNIST and by 6.3 on CIFAR-10. It is also cheaper,
+requiring 1.91 times fewer function evaluations on MNIST and 1.26 to 1.32 times fewer on
+CIFAR-10, at the tolerances that pass the check in every run. The ratio is less stable across
+runs than accuracy: an independent retrain of the MNIST models gives 2.10 at $10^{-7}$.
 
 Two of the four absolute values match the original and two fall below it. The CIFAR-10 Neural
 ODE matches within noise, as does the MNIST augmented model. The MNIST Neural ODE falls about
@@ -395,16 +422,17 @@ published values. The conditions recorded before the run concerned the ordering,
   \centering
   \small
   \caption{Matched-parameter image results, mean $\pm$ s.d. over five seeds, quoted at the
-           loosest tolerance at which both arms pass the reconstruction check.}
+           loosest tolerance at which both arms pass the reconstruction check on every seed,
+           in every committed run.}
   \label{tab:table1}
   \begin{tabular}{@{}llccc@{}}
     \toprule
     Dataset & Model & This replication & Original & Tolerance \\
     \midrule
-    MNIST    & Neural ODE & $94.16 \pm 0.44$ & $96.4 \pm 0.5$ & $10^{-6}$ \\
-    MNIST    & ANODE ($p=5$)  & $98.05 \pm 0.19$ & $98.2 \pm 0.1$ & $10^{-6}$ \\
-    CIFAR-10 & Neural ODE & $53.69 \pm 0.81$ & $53.7 \pm 0.2$ & $10^{-5}$ \\
-    CIFAR-10 & ANODE ($p=10$) & $60.04 \pm 0.94$ & $60.6 \pm 0.4$ & $10^{-5}$ \\
+    MNIST    & Neural ODE & $94.16 \pm 0.44$ & $96.4 \pm 0.5$ & $10^{-7}$ \\
+    MNIST    & ANODE ($p=5$)  & $98.05 \pm 0.20$ & $98.2 \pm 0.1$ & $10^{-7}$ \\
+    CIFAR-10 & Neural ODE & $53.70 \pm 0.83$ & $53.7 \pm 0.2$ & $10^{-6}$ \\
+    CIFAR-10 & ANODE ($p=10$) & $60.04 \pm 0.94$ & $60.6 \pm 0.4$ & $10^{-6}$ \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -415,7 +443,7 @@ for every model and every seed on both datasets. Our first version of this exper
 accuracy there, so the reported values came from a regime in which the solver was not tracking
 the flow. We repeated both experiments with the training tolerance included in the evaluation
 ladder and the test set re-evaluated at every tolerance. Accuracy is almost insensitive to the
-change. It moves by at most 0.11 points on average, and by 0.37 points for the worst single
+change. It moves by at most 0.11 points on average, and by 0.40 points for the worst single
 seed, between the training tolerance and a checked one. Cost behaves differently, since the
 forward NFE at $10^{-7}$ is several times its value at $10^{-3}$. We therefore quote both
 accuracy and cost at checked tolerances.
@@ -533,8 +561,10 @@ every seed and epoch, the forward NFE grows from \textbf{384 to 738} over six ep
 holds in all five seeds, so the claim reproduces.
 
 The behaviour of the tolerance is more informative than the NFE itself. Over the same six
-epochs, the fraction of seeds passing the check at $10^{-5}$ falls from 1.0 to 0.4, while
-$10^{-6}$ and $10^{-7}$ continue to pass. The field does not only become more expensive to
+epochs, the fraction of seeds passing the check at $10^{-5}$ falls from 1.0 in the first three
+epochs to between 0.4 and 0.6 in the last three, while $10^{-6}$ and $10^{-7}$ continue to pass.
+The loosest tolerance that passes on every seed tightens from $10^{-5}$ to $10^{-6}$ at the
+fourth epoch. The field does not only become more expensive to
 integrate. It becomes harder to integrate at a fixed tolerance. This is the mechanism behind
 Section~\ref{sec:recon}, measured directly, and it is why a tolerance chosen at the start of
 training cannot be assumed to remain adequate. A companion ten-epoch run at a single tolerance
@@ -555,13 +585,11 @@ which is what an earlier version of this project did. Testing the claim requires
 model fixed and increasing its own number of function evaluations.
 
 We did this by tightening the solver tolerance. Peak memory under the adjoint is flat at
-\textbf{$+0.0007$ MB per function evaluation}, staying at 442 MB across a fivefold increase in
-NFE. Direct backpropagation through the solver rises at \textbf{$+31.8$ MB per function
+\textbf{$+0.0007$ MB per function evaluation}, staying at 442 MB as the NFE rises from 14 to 92. Direct backpropagation through the solver rises at \textbf{$+31.8$ MB per function
 evaluation}, from 689 MB to 3185 MB over the same range. The claim reproduces. The gradients of
 the two methods agree throughout to within half a percent, so the constant memory does not come
-at the cost of a worse gradient. This experiment used three seeds rather than five. The effect
-spans four orders of magnitude and is unambiguous in every seed, but the sample is smaller than
-elsewhere.
+at the cost of a worse gradient. Peak memory does not depend on the seed, and the three seeds we ran give identical values.
+They show that the measurement repeats, not that it holds across independent samples.
 
 \resfig{../figures/c4/memory_vs_nfe.png}
   {Claim 8. Peak memory against the forward NFE of the model, increased by tightening the
@@ -590,14 +618,17 @@ models.
   \centering
   \small
   \caption{Outcome per claim and the evidence it rests on. Every quantity is quoted at a
-           tolerance at which the reconstruction check passes.}
+           tolerance at which the reconstruction check passes, except the all-seed growth
+           factor of claim 2, which includes seeds that fail at the largest budgets.}
   \label{tab:summary}
   \begin{tabularx}{\linewidth}{@{}clX@{}}
     \toprule
     \# & Outcome & Evidence \\
     \midrule
-    1 & reproduced & Neural ODE at the predicted error floor, 1.0002 against 0.0007 \\
-    2 & reproduced & NFE growth of $\times1.74$ against $\times1.04$ over the budget sweep \\
+    1 & reproduced & Neural ODE at the predicted error floor, 1.0001 against 0.0000, on four of
+        five seeds. The fifth is too stiff to check and also sits at the floor \\
+    2 & reproduced & NFE growth of $\times1.74$ against $\times1.04$ over the budget sweep,
+        $\times1.37$ on the seeds that pass at both ends \\
     3 & reproduced & held-out accuracy 0.619 against 1.000, extended over widths and
         geometries \\
     4 & partial & ordering reproduced on both datasets. Two of four accuracies fall short by
@@ -629,8 +660,9 @@ integrator returns a state, the counter returns a number, and only an explicit c
 the flow was not tracked. We added the reconstruction check after reviewing a set of results
 that looked unusually clean. It invalidated several conclusions we had already recorded,
 including a factorial experiment whose result was an artefact of a non-integrating tolerance,
-and our own first measurement of the backward to forward cost ratio. A default tolerance should
-be treated as wrong until checked, and rechecked as training proceeds.
+and our own first measurement of the backward to forward cost ratio. A tolerance should be treated
+as unverified until checked, whether it is a library default or the value an original paper
+used, and it should be rechecked as training proceeds.
 
 Three further difficulties arose. Epoch budgets are not stated for the image
 experiments in the original, so our undershoot on two accuracies cannot be attributed cleanly.
@@ -656,9 +688,8 @@ Two questions remain that only the original authors can answer. The first is the
 which the reverse solve of Figure 3c was run relative to the forward pass. The second is
 whether the backward NFE reported there counts evaluations of the vector field or steps of the
 augmented adjoint system. We have written to them with both questions.
-% TODO before submission: replace the last sentence with the outcome. If they reply, summarise
-% the answer and correct the result if they correct us. If they do not reply, say so. An
-% unanswered enquiry is acceptable, an unattempted one is not. Record the date sent.
+% TODO before submission: the letter to Chen et al. has been sent. Add the outcome here. If
+% they reply, summarise the answer and correct the result if they correct us.
 
 \section{Conclusion}
 

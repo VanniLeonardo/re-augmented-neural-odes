@@ -887,3 +887,75 @@ check** and carry the conclusions. Excluded cells are concentrated at tol 1e-3 (
   and the adaptive stiff-capable SciPy solvers time out on the conv field. So we can say the gap
   is dominated by the adjoint tolerance coupling and is *not* explained by moving to a
   stiff-capable solver — but not that Chen's exact configuration would behave as ours does.
+
+## [7] D8 AT DUPONT'S SETTINGS — PRE-DECLARED (2026-09-10, written before the run)
+
+A reviewer pass found that the crossing flow ran at width 16, lr 1e-2, 300 full-batch epochs
+on 200 points, trained at 1e-5. Dupont App. F.2.1 gives, for d=1: batch 64, lr 1e-3, width
+32, 50 epochs, best augmentation p=5, 3000 points, and dopri5 at 1e-3 (App. F). The narrower
+field cuts in the direction that helps our result, so the experiment is re-run at those
+settings and only these numbers are reported. The paper gives no separate settings for the
+Fig. 3 crossing, so the d=1 settings are the closest it states. Points: 1500 near -1, 1500
+near +1, noise 0.05. Arms: NODE, ANODE-p1 (the minimal augmentation the claim is about) and
+ANODE-p5 (Dupont's tuned value). 5 seeds, CPU. Evaluation ladder 1e-3, 1e-5, 1e-6, 1e-7, each
+row with the reconstruction check.
+
+- **Prediction:** the NODE sits at the Proposition 1 floor, MSE about 1.0. Both ANODE arms
+  solve the task.
+- **Refuted if**, at the loosest tolerance where every arm passes on every seed, the NODE
+  median MSE is below 0.1, or any ANODE arm's median MSE is above 0.1.
+- **Stop and flag** if the NODE median MSE is below 0.5 at a checked tolerance. That would
+  contradict a theorem, not a paper number.
+- **Known risk, stated now:** 50 epochs at lr 1e-3 is a smaller training budget than before.
+  If an ANODE arm has not converged, the refutation fires and is reported as such, not
+  re-run with a larger budget.
+- The previous `results/crossing/` numbers are replaced. They stay in git history.
+
+## [8] REPORTING RULE TIGHTENED (2026-09-10)
+
+A reviewer pass found that `results/d3/` passes the check at 1e-6 on every seed while the
+independent retrain in `results/d3_faithful/` fails there on two NODE seeds. Separate runs
+train separate fields, so a tolerance that integrates one run need not integrate another. The
+rule is now: a tolerance counts as checked only if both arms pass on every seed in every
+committed run of the experiment. `scripts/image_table.py` applies it.
+
+- MNIST: the headline moves from 1e-6 to 1e-7. Accuracy is unchanged (NODE 94.16 ± 0.44,
+  ANODE 98.05 ± 0.20). The NFE ratio at 1e-7 is 1.91, and 2.10 in the independent retrain.
+- CIFAR-10: the headline moves from 1e-5 to 1e-6, because one ANODE seed of the RTX 3090 run
+  fails at 1e-5. NODE 53.70 ± 0.83, ANODE 60.04 ± 0.94. The ratio is 1.26 to 1.32.
+- Earlier text quoted 2.10 and 1.93 as upper bounds. Those came from runs other than the one
+  reported beside them, and are withdrawn as bounds.
+
+## [7a] D8 RESULT ON THE PRE-DECLARED LADDER, AND AN EXTENSION (2026-09-10)
+
+On the ladder 1e-3 to 1e-7, no tolerance has every arm passing on every seed. NODE MSE is
+1.0001 at every rung, and both ANODE arms reach 0.0000, but one NODE seed still fails the
+check at 1e-7 (4/5). The pre-declared condition is evaluated at a tolerance that does not
+exist on this ladder, so it cannot be applied as written, and the run is recorded as data.
+
+Extension, written before running it: the evaluation ladder is extended to 1e-8 and 1e-9.
+Training is unchanged. The run is seeded and on CPU, so the re-run must reproduce the rows at
+1e-3 to 1e-7 exactly. If it does not, the extension is discarded. If the stiffest NODE seed
+still fails at 1e-9, that is reported, and claim 1 is stated on the seeds that pass.
+
+## [7b] D8 RESULT ON THE EXTENDED LADDER (5 seeds, CPU, 503 s)
+
+The re-run reproduced all 60 rows from 1e-3 to 1e-7 exactly, so the extension stands.
+
+| eval_tol | NODE MSE | NODE NFE | NODE recon | ANODE-p1 MSE | recon | ANODE-p5 MSE | recon |
+|---|---|---|---|---|---|---|---|
+| 1e-3 | 1.0001 | 50 | 0/5 | 0.0000 | 2/5 | 0.0000 | 2/5 |
+| 1e-5 | 1.0001 | 98 | 1/5 | 0.0000 | 5/5 | 0.0000 | 5/5 |
+| 1e-6 | 1.0001 | 152 | 3/5 | 0.0000 | 5/5 | 0.0000 | 5/5 |
+| 1e-7 | 1.0001 | 320 | 4/5 | 0.0000 | 5/5 | 0.0000 | 5/5 |
+| 1e-8 | 1.0001 | 680 | 4/5 | 0.0000 | 5/5 | 0.0000 | 5/5 |
+| 1e-9 | 1.0001 | 1382 | 4/5 | 0.0000 | 5/5 | 0.0000 | 5/5 |
+
+- NODE seed 3 fails at every rung. Its reconstruction error falls steadily, 25.4 at 1e-3 to
+  0.014 at 1e-9, so it is a stiffer field that needs a tolerance beyond the ladder, not a
+  failure to converge. No step cap was hit. Its MSE is 1.0000 at every rung.
+- On the remaining seeds the loosest tolerance where every arm passes is 1e-7. There: NODE
+  1.0001 [1.0001, 1.0002], ANODE-p1 and ANODE-p5 0.0000, NFE 305, 206 and 170.
+- Not refuted. No stop condition: the NODE sits at the Proposition 1 floor, never below it.
+- At 1e-3, the tolerance Dupont specifies, 11 of 15 models fail the check, the worst with a
+  relative reconstruction error of 25.

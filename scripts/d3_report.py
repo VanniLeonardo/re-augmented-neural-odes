@@ -56,7 +56,8 @@ def main() -> None:
         print(f"  {m} train-tol NFE {gg.iloc[0]:.1f}->{gg.iloc[-1]:.1f} (x{gg.iloc[-1]/gg.iloc[0]:.2f})")
 
     faithful_table(df, "faithful_fwd_nfe", DUPONT, fd,
-                   replicate=(rd / "run1_rtx3090" / "d3_trajectory.csv", "run 1, RTX 3090"))
+                   replicate=(rd / "run1_rtx3090" / "d3_trajectory.csv", "run 1, RTX 3090"),
+                   other_runs=(rd.parent / "d3_faithful" / "d3_faithful_trajectory.csv",))
     print(f"Wrote figures to {fd}")
 
 

@@ -24,7 +24,7 @@ def main() -> None:
 
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(12, 4.5))
     for col, c, lab in [("train_fwd_nfe", "tab:red", f"train-tol NFE"),
-                        ("faithful_fwd_nfe", "tab:purple", "faithful-tol NFE (recon-checked)")]:
+                        ("faithful_fwd_nfe", "tab:purple", "NFE at the 1e-5 check tolerance")]:
         piv = df.pivot_table(index="epoch", columns="seed", values=col)
         m, s = piv.mean(axis=1), piv.std(axis=1)
         a1.plot(piv.index, m, color=c, label=lab)
@@ -43,8 +43,11 @@ def main() -> None:
     print(g.to_string())
     e1, eN = g.index.min(), g.index.max()
     print(f"\ntrain-tol NFE {g.loc[e1,'train_fwd_nfe']:.1f}->{g.loc[eN,'train_fwd_nfe']:.1f} | "
-          f"faithful-tol NFE {g.loc[e1,'faithful_fwd_nfe']:.1f}->{g.loc[eN,'faithful_fwd_nfe']:.1f} "
+          f"NFE at 1e-5 {g.loc[e1,'faithful_fwd_nfe']:.1f}->{g.loc[eN,'faithful_fwd_nfe']:.1f} "
           f"(REFUTED if flat/decreasing)")
+    print(f"recon_ok fraction at 1e-5: {g.loc[e1,'recon_ok']:.1f} at epoch {e1}, "
+          f"{g.loc[eN,'recon_ok']:.1f} at epoch {eN}. Epochs where it is below 1 are not "
+          "integrated on every seed; the checked curve is in plot_mnist_stiffening.")
     print(f"Wrote {fd}/nfe_over_training.png")
 
 

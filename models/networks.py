@@ -133,7 +133,7 @@ class ConvODENet(nn.Module):
         )
 
         # 2. The continuous block using the Convolutional Vector Field
-        self.ode_func = ConvODEFunc(num_channels=num_filters)
+        self.ode_func = ConvODEFunc(num_channels=num_filters, hidden_channels=num_filters)
         self.ode_block = ODEBlock(ode_func=self.ode_func, solver_type=solver_type)
 
         # 3. Global average pooling to flatten the spatial dimensions, then classify

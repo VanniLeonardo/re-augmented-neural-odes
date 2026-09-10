@@ -3,7 +3,8 @@
 The committed D3 measured NFE at eval-tol 1e-5, where the NODE flow is recon_ok only 2/5 at ep8
 (3 seeds' NODE fields stiffen past 1e-5). So the "NODE faithful NFE 86 / ANODE 1.7x cheaper"
 comparison sits at a tol that is NOT integrating those NODE seeds. This retrains BOTH D3 models
-(deterministic, same seeds => the exact committed fields) and, per epoch, measures forward NFE +
+with the same seeds and code. Adaptive solvers and GPU kernels are not bit-reproducible, so the
+fields are close to, but not identical with, those in results/d3/. Then, per epoch, measures forward NFE +
 reconstruction at {1e-5, 1e-6, 1e-7} (capped). We then report the ANODE/NODE NFE ratio at the
 LOOSEST tol where BOTH models are recon_ok 5/5 through the budget -- an apples-to-apples faithful
 comparison. If even 1e-7 can't integrate the stiffest NODE seeds, that is recorded as data.

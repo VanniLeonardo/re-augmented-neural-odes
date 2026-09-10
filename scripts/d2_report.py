@@ -1,6 +1,6 @@
 """D2 report: NODE vs ANODE missing-slice generalisation, evaluate pre-declared R-D2a/b.
 
-Reads results/slice_circles/ and results/slice_spheres/ (slice_raw.csv) and prints, per
+Reads results/slice_spheres/slice_raw.csv and prints, per
 (geometry, model), median[IQR] over seeds of: train_loss, slice_val_loss, slice_val_acc, and the
 generalisation gap. Then the mechanical evaluation of R-D2a (NODE has a gap) and R-D2b (ANODE
 generalises better) with RAW numbers -- the observation decides, not a verdict string. recon_ok
@@ -21,7 +21,7 @@ def med_iqr(a):
 
 def main() -> None:
     p = argparse.ArgumentParser()
-    p.add_argument("--dirs", default="results/slice_circles,results/slice_spheres")
+    p.add_argument("--dirs", default="results/slice_spheres")
     args = p.parse_args()
     frames = []
     for d in args.dirs.split(","):

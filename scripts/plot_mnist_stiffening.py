@@ -46,11 +46,10 @@ def main() -> None:
 
     print("=== recon_ok fraction (epoch x eval_tol) ===")
     print(piv.to_string())
-    print("\n=== loosest recon_ok tol per epoch (median over seeds) ===")
+    print("\n=== loosest tolerance passing the check on every seed, per epoch ===")
     for ep, g in df.groupby("epoch"):
-        ok = g[g.recon_ok == 1]
-        loosest = ok.eval_tol.max() if len(ok) else float("nan")
-        print(f"  epoch {ep}: loosest recon_ok tol = {loosest:.0e}" if loosest == loosest else f"  epoch {ep}: none integrate")
+        good = [t for t, x in g.groupby("eval_tol") if x.recon_ok.eq(1).all()]
+        print(f"  epoch {ep}: {max(good):.0e}" if good else f"  epoch {ep}: none")
     print("\n=== faithful NFE (tightest tol 1e-7) vs epoch ===")
     g7 = df[df.eval_tol == df.eval_tol.min()].groupby("epoch").eval_fwd_nfe.mean()
     print("  " + " ".join(f"e{e}:{v:.0f}" for e, v in g7.items()))

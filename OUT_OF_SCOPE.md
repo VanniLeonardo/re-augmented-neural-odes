@@ -25,7 +25,7 @@ excluded, for three reasons.
 | Excluded | Why |
 |---|---|
 | SVHN and ImageNet from Dupont et al., Table 1 | Beyond the compute available. The two datasets we do run, MNIST and CIFAR-10, carry the same claim. |
-| Chen et al., Table 1 error rates | Their ODE-Net trains for 100 or more epochs. Our MNIST rows are our own seeded baselines at 10 epochs and are not a claim about that table. See `DEVIATIONS.md` row C4. |
+| Chen et al., Table 1 error rates | Their ODE-Net trains for 100 or more epochs. Our MNIST rows are our own seeded baselines at 10 epochs and are not a claim about that table. See `DEVIATIONS.md` row S4. |
 | A discrete residual baseline | Weight tying is the only way to match parameter counts exactly, and it makes the comparison close to tautological, since the two models are then the same vector field under two integrators. Claim C3 is instead tested on the axis the claim is about, the model's own NFE. |
 
 The scope of each claim we do test, and where it departs from the source papers, is in

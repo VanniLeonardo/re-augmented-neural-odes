@@ -52,6 +52,9 @@ def main() -> None:
                          for w in widths]
                 print(f"{name[p]:10}" + "".join(f"{_q(c) if len(c) else '-':>26}" for c in cells))
 
+    ok = raw[raw.recon_ok == 1]
+    print(f"\nobserved-region accuracy: {int((ok.obs_val_acc < 0.998).sum())} of {len(ok)} "
+          f"recon-passing runs below 0.998, lowest {ok.obs_val_acc.min():.3f}")
     print("\n" + "=" * 78)
     print("PRE-DECLARED CHECKS (raw numbers + condition; observation decides)")
     print("=" * 78)

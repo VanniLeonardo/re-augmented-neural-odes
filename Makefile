@@ -11,7 +11,7 @@ PY ?= python
 SMOKE_DIR := .smoke
 SEEDS ?= 0,1,2,3,4
 
-.PHONY: help test smoke figures reproduce-all reproduce-dupont reproduce-chen \
+.PHONY: help test smoke figures reproduce-all reproduce-dupont reproduce-chen d3-faithful topology \
         d1 d2 d3 d4 d8 c1 c2 c3 c4 slice-grid budget c2-guard \
         fig-d1 fig-d2 fig-d3 fig-d4 fig-d8 fig-c1 fig-c2 fig-c3 fig-c4 \
         fig-slice-grid env docker-build docker-smoke clean
@@ -24,14 +24,16 @@ help:
 	@echo "  docker-smoke     build the pinned CPU image and run the smoke check inside it"
 	@echo ""
 	@echo "Full re-run (GPU). Costs are measured where marked:"
-	@echo "  reproduce-all    everything below (~15-20 GPU-h, plus 1.6 h CPU)"
+	@echo "  reproduce-all    everything below (~15-20 GPU-h, plus ~5 h CPU)"
 	@echo "  reproduce-dupont d8 d1 d2 d3 d4"
 	@echo "  reproduce-chen   c4 c2 c3 c1"
 	@echo ""
-	@echo "  d8          1-D crossing flow                      (~5 min, CPU)"
+	@echo "  d8          1-D crossing flow                      (~10 min, CPU)"
 	@echo "  d1          toy separation, NFE against budget     (~2 h, CPU)"
 	@echo "  d2          missing-slice generalisation           (~1-2 h, CPU)"
 	@echo "  d3          matched-parameter MNIST                (1.9 h, measured)"
+	@echo "  d3-faithful independent MNIST retrain, tolerance ladder (GPU)"
+	@echo "  topology    topology diagnostics, spheres field      (CPU)"
 	@echo "  d4          matched-parameter CIFAR-10             (4.3 h, measured)"
 	@echo "  c1          solver dynamics                        (~3.5 h)"
 	@echo "  c2          backward against forward NFE           (~1-2 h)"
@@ -48,8 +50,8 @@ test:
 
 smoke:
 	@echo ">>> [1/4] crossing flow (1 seed, tiny)"
-	@CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.train_crossing_flow --seeds 0 --epochs 20 \
-	  --train_tol 1e-5 --eval_tols 1e-3,1e-5 --results_dir $(SMOKE_DIR)/crossing
+	@CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.train_crossing_flow --seeds 0 --epochs 2 \
+	  --n_samples 256 --augment_dims 0,1 --eval_tols 1e-3,1e-5 --results_dir $(SMOKE_DIR)/crossing
 	@echo ">>> [2/4] missing slice (1 seed, tiny)"
 	@CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.run_missing_slice --geometry spheres --seeds 0 \
 	  --epochs 5 --train_tol 1e-6 --eval_tol 1e-6 --results_dir $(SMOKE_DIR)/slice
@@ -112,12 +114,13 @@ fig-slice-grid:  ## the missing-region extension
 reproduce-all: reproduce-dupont reproduce-chen slice-grid figures
 	@echo "Done. Results under results/, figures under figures/."
 
-reproduce-dupont: d8 d1 d2 d3 d4
+reproduce-dupont: d8 d1 d2 d3 d4 d3-faithful topology  
 reproduce-chen: c4 c2 c3 c1
 
 d8:  ## 1-D crossing flow, tolerance ladder and reconstruction check
-	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.train_crossing_flow \
-	  --seeds $(SEEDS) --epochs 300 --train_tol 1e-5 --eval_tols 1e-3,1e-5,1e-6,1e-7
+	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.train_crossing_flow --seeds $(SEEDS) \
+	  --n_samples 3000 --batch_size 64 --lr 1e-3 --ode_hidden_dim 32 --epochs 50 \
+	  --augment_dims 0,1,5 --train_tol 1e-3 --eval_tols 1e-3,1e-5,1e-6,1e-7,1e-8,1e-9
 
 d1: budget  ## toy separation and NFE against budget, on both geometries
 	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.run_budget_sweep \
@@ -143,6 +146,12 @@ d3:  ## matched-parameter NODE against ANODE on MNIST
 	  $(PY) -m scripts.run_d3_anode_mnist --seeds $$s --tag _s$$s --epochs 8 \
 	    --batch_size 256 --eval_tols 1e-3,1e-5,1e-6,1e-7 || exit 1; \
 	done
+
+d3-faithful:  ## independent MNIST retrain, NFE and reconstruction on a tolerance ladder
+	$(PY) -m scripts.run_d3_faithful_nfe --seeds $(SEEDS)
+
+topology:  ## topology diagnostics of the trained spheres field
+	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.topology_diagnostics
 
 d4:  ## matched-parameter NODE against ANODE on CIFAR-10, resumable per file
 	@for s in $$(echo $(SEEDS) | tr ',' ' '); do \

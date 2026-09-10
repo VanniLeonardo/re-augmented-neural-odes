@@ -130,19 +130,21 @@ def run_one(augment_dim: int, seed: int, cfg: argparse.Namespace, device: torch.
 
     model_name = "NODE" if augment_dim == 0 else f"ANODE-p{augment_dim}"
     logger = get_logger(run_name=f"crossing_{model_name}_seed{seed}", config=vars(cfg))
-    final_mse, final_nfe = float("nan"), 0.0
+    gen = torch.Generator().manual_seed(seed)
     for epoch in range(cfg.epochs):
         model.train()
-        opt.zero_grad()
-        pred = model(x)
-        loss = lossf(pred, y)
-        loss.backward()
-        opt.step()
-        final_mse = loss.item()
-        final_nfe = float(model.ode_func.nfe)
+        for idx in torch.randperm(len(x), generator=gen).split(cfg.batch_size):
+            idx = idx.to(device)
+            opt.zero_grad()
+            loss = lossf(model(x[idx]), y[idx])
+            loss.backward()
+            opt.step()
         if epoch % cfg.log_every == 0 or epoch == cfg.epochs - 1:
-            logger.log({"epoch": epoch, "mse": final_mse, "forward_nfe": final_nfe})
+            logger.log({"epoch": epoch, "mse": loss.item(), "forward_nfe": model.ode_func.nfe})
     logger.finish()
+    with torch.no_grad():
+        final_mse = lossf(model(x), y).item()
+    final_nfe = float(model.ode_func.nfe)
 
     hardware = torch.cuda.get_device_name(0) if device.type == "cuda" else "cpu"
     rows = []
@@ -151,23 +153,30 @@ def run_one(augment_dim: int, seed: int, cfg: argparse.Namespace, device: torch.
         print(f"  {model_name:9s} seed {seed} @tol {tol:.0e}: MSE {m['mse']:.4f} | "
               f"fwd NFE {m['fwd_nfe']:.0f} | recon {m['recon_rel']:.2e} ok={m['recon_ok']}")
         rows.append({"model_name": model_name, "augment_dim": augment_dim, "seed": seed,
-                     "epochs": cfg.epochs, "train_tol": cfg.train_tol,
+                     "epochs": cfg.epochs, "lr": cfg.lr, "batch_size": cfg.batch_size,
+                     "ode_hidden_dim": cfg.ode_hidden_dim, "n_samples": cfg.n_samples,
+                     "train_tol": cfg.train_tol,
                      "train_mse_at_train_tol": final_mse, "train_nfe_at_train_tol": final_nfe,
                      **m, "hardware": hardware})
     return rows
 
 
 def parse_args() -> argparse.Namespace:
+    # Defaults are Dupont App. F.2.1 for d=1: batch 64, lr 1e-3, width 32, 50 epochs,
+    # dopri5 at 1e-3, and 3000 points (the only 1-D dataset size the paper states).
     p = argparse.ArgumentParser(description="D8 1-D crossing-flow demo (NODE vs ANODE).")
-    p.add_argument("--n_samples", type=int, default=200)
+    p.add_argument("--n_samples", type=int, default=3000)
     p.add_argument("--noise", type=float, default=0.05)
-    p.add_argument("--epochs", type=int, default=300)
-    p.add_argument("--lr", type=float, default=1e-2)
-    p.add_argument("--ode_hidden_dim", type=int, default=16)
+    p.add_argument("--epochs", type=int, default=50)
+    p.add_argument("--batch_size", type=int, default=64)
+    p.add_argument("--lr", type=float, default=1e-3)
+    p.add_argument("--ode_hidden_dim", type=int, default=32)
+    p.add_argument("--augment_dims", type=str, default="0,1,5",
+                   help="0 is the NODE; 1 is the minimal augmentation, 5 is Dupont's best for d=1")
     p.add_argument("--solver", type=str, default="dopri5")
-    p.add_argument("--train_tol", type=float, default=1e-5,
-                   help="training solver tolerance (the old default 1e-3 does not integrate "
-                        "these fields -- see DEVIATIONS.md A4)")
+    p.add_argument("--train_tol", type=float, default=1e-3,
+                   help="training tolerance; every reported number is re-measured on the "
+                        "evaluation ladder with a reconstruction check")
     p.add_argument("--eval_tols", type=str, default="1e-3,1e-5,1e-6,1e-7",
                    help="ladder re-evaluated after training; every row carries recon_ok")
     p.add_argument("--cap", type=int, default=500_000)
@@ -186,7 +195,7 @@ def main() -> None:
     summary_path = Path(cfg.results_dir) / "crossing_summary.csv"
     if summary_path.exists():
         summary_path.unlink()  # full re-run: every row must come from this invocation
-    for augment_dim in (0, 1):
+    for augment_dim in (int(a) for a in cfg.augment_dims.split(",")):
         for seed in seeds:
             for row in run_one(augment_dim, seed, cfg, device):
                 _append_row(summary_path, row)

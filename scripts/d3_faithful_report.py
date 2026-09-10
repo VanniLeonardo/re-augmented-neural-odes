@@ -1,6 +1,9 @@
 """Report the D3 faithful NFE re-measurement: find the loosest COMMON recon-faithful tolerance
 and report the ANODE/NODE forward-NFE ratio there (the submission-clean comparison).
 
+This is an independent retrain on an RTX 3090, so its fields differ from those in
+results/d3/. d3_report uses it as extra evidence when choosing the reporting tolerance.
+
 Reads results/d3_faithful/d3_faithful_trajectory.csv. Writes figures/d3/faithful_nfe.png and
 prints, per eval tol at the final epoch: NODE/ANODE median NFE + recon_ok fraction, then the
 loosest tol where BOTH are recon_ok 5/5, and the NFE ratio there.

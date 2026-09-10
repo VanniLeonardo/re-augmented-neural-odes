@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build the pinned CPU image (no cache, as a reviewer would)
-        run: docker build -t neural-odes-repro .
+        run: docker build --no-cache -t neural-odes-repro .
 
       - name: make smoke (acceptance gate; CPU only, no network)
         run: docker run --rm neural-odes-repro make smoke

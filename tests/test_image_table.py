@@ -36,4 +36,15 @@ def test_headline_is_loosest_tol_where_both_arms_pass_every_seed(tmp_path, capsy
                  _row("ANODE-p5", s, 1e-6, 1, 0.9)]
     faithful_table(pd.DataFrame(rows), "eval_fwd_nfe",
                    {"NODE": (0.0, 0.0), "ANODE-p5": (0.0, 0.0)}, tmp_path)
-    assert "BOTH arms recon_ok on every seed: 1e-06" in capsys.readouterr().out
+    assert "on every seed, in every run: 1e-06" in capsys.readouterr().out
+
+
+def test_a_rung_failing_in_another_run_is_not_used(tmp_path, capsys) -> None:
+    """Both arms pass at 1e-6 here, but a second committed run fails there, so the
+    headline must move to 1e-7."""
+    rows = [_row(m, s, t, 1) for m in ("NODE", "ANODE-p5") for s in (0, 1) for t in (1e-6, 1e-7)]
+    other = tmp_path / "other.csv"
+    pd.DataFrame([_row("NODE", 0, 1e-6, 0), _row("NODE", 0, 1e-7, 1)]).to_csv(other, index=False)
+    faithful_table(pd.DataFrame(rows), "eval_fwd_nfe",
+                   {"NODE": (0.0, 0.0), "ANODE-p5": (0.0, 0.0)}, tmp_path, other_runs=(other,))
+    assert "in every run: 1e-07" in capsys.readouterr().out

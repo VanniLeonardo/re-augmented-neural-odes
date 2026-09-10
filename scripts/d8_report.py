@@ -14,7 +14,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 
-COL = {"NODE": "tab:red", "ANODE-p1": "tab:blue"}
+COL = {"NODE": "tab:red", "ANODE-p1": "tab:blue", "ANODE-p5": "tab:purple"}
 THEORY_FLOOR = 1.0  # best order-preserving map: predict 0 for targets +/-1
 SOLVED = 0.1        # pre-declared: MSE below this counts as "solves the task"
 
@@ -29,8 +29,10 @@ def main() -> None:
     arms = sorted(df.model_name.unique(), key=lambda m: m != "NODE")
     n_seeds = df.seed.nunique()
 
-    print(f"=== D8 crossing flow: {n_seeds} seeds, trained at tol "
-          f"{df.train_tol.iloc[0]:.0e} ===")
+    r = df.iloc[0]
+    print(f"=== D8 crossing flow: {n_seeds} seeds, {int(r.n_samples)} points, batch "
+          f"{int(r.batch_size)}, lr {r.lr:g}, width {int(r.ode_hidden_dim)}, {int(r.epochs)} "
+          f"epochs, trained at tol {r.train_tol:.0e} ===")
     print(f"{'eval_tol':>9} | " + " | ".join(
         f"{m:>9} MSE  NFE  recon" for m in arms))
     for tol, g in df.groupby("eval_tol"):
@@ -41,29 +43,41 @@ def main() -> None:
                          f"{int(s.recon_ok.sum())}/{len(s)}")
         print(f"{tol:>9.0e} | " + " | ".join(cells))
 
-    faithful = [t for t, g in df.groupby("eval_tol")
-                if all(g[g.model_name == m].recon_ok.eq(1).all() for m in arms)]
     print("\n=== faithful comparison ===")
+    # Pre-recorded fallback (OVERNIGHT_LOG [7a]): a model-seed that fails the check at every
+    # rung is reported in full, then the comparison is made on the seeds that remain.
+    best = df.groupby(["model_name", "seed"]).recon_ok.max()
+    never = list(best[best == 0].index)
+    rep = df
+    for m, s in never:
+        r = df[(df.model_name == m) & (df.seed == s)].sort_values("eval_tol")
+        print(f"  {m} seed {s} fails the check at every tolerance (excluded below): " + ", ".join(
+            f"{t:.0e} MSE {x:.4f} recon {e:.2e}" for t, x, e in zip(r.eval_tol, r.mse, r.recon_rel)))
+        rep = rep[~((rep.model_name == m) & (rep.seed == s))]
+    faithful = [t for t, g in rep.groupby("eval_tol")
+                if all(g[g.model_name == m].recon_ok.eq(1).all() for m in arms)]
     if not faithful:
-        print("  NO tolerance has BOTH arms recon_ok on every seed -- nothing is reportable "
-              "as faithful. Record as data, do not headline.")
+        print("  NO tolerance has every arm recon_ok on every remaining seed -- nothing is "
+              "reportable as faithful. Record as data, do not headline.")
         return
-    tol = max(faithful)  # loosest that is still faithful for both arms
-    at = df[df.eval_tol == tol]
+    tol = max(faithful)  # loosest that is still faithful for every arm
+    at = rep[rep.eval_tol == tol]
     med = {m: at[at.model_name == m] for m in arms}
-    print(f"  Loosest tol where BOTH arms recon_ok {n_seeds}/{n_seeds}: {tol:.0e}")
+    print(f"  Loosest tol where every arm passes on every remaining seed: {tol:.0e}")
     for m in arms:
         s = med[m]
         print(f"    {m:9s} MSE {s.mse.median():.4f} "
               f"[{s.mse.min():.4f}, {s.mse.max():.4f}]  fwd NFE {s.fwd_nfe.median():.0f}")
 
-    node, anode = med["NODE"], med[[m for m in arms if m != "NODE"][0]]
-    print("\nPRE-DECLARED REFUTATION (REFUTED if NODE MSE < 0.1, or ANODE MSE > 0.1):")
+    node = med["NODE"]
+    anodes = [m for m in arms if m != "NODE"]
+    print("\nPRE-DECLARED REFUTATION (REFUTED if NODE MSE < 0.1, or any ANODE MSE > 0.1):")
     print(f"  NODE MSE  {node.mse.median():.4f} -> solves? "
           f"{node.mse.median() < SOLVED}  (must be False)")
-    print(f"  ANODE MSE {anode.mse.median():.4f} -> solves? "
-          f"{anode.mse.median() < SOLVED}  (must be True)")
-    refuted = (node.mse.median() < SOLVED) or (anode.mse.median() > SOLVED)
+    for m in anodes:
+        print(f"  {m} MSE {med[m].mse.median():.4f} -> solves? "
+              f"{med[m].mse.median() < SOLVED}  (must be True)")
+    refuted = node.mse.median() < SOLVED or any(med[m].mse.median() > SOLVED for m in anodes)
     print(f"  => {'REFUTED' if refuted else 'NOT REFUTED'}")
     print(f"  NODE MSE vs Prop.1 theory floor {THEORY_FLOOR:.1f}: "
           f"{node.mse.median():.4f}")

@@ -74,6 +74,13 @@ def main() -> None:
               f"-> REFUTED if ANODE>=NODE  [ANODE<NODE = {an_nfe < node_nfe}]")
         print(f"  R2 (NODE grows>=+30%, ANODE<+30%, 25->500): NODE x{node_grow:.2f}, ANODE x{an_grow:.2f} "
               f"-> REFUTED if NODE grow<1.30 or ANODE grow>=1.30")
+        passes = g[(g.model == "NODE") & g.budget.isin([25, 500])].groupby("seed").recon_ok.min()
+        keep = passes[passes == 1].index
+        kept = g[(g.model == "NODE") & g.seed.isin(keep)]
+        grow_ok = (np.median(kept[kept.budget == 500].fwd_nfe_median)
+                   / np.median(kept[kept.budget == 25].fwd_nfe_median))
+        print(f"     NODE growth on the {len(keep)} seeds passing the check at 25 and 500: "
+              f"x{grow_ok:.2f}")
         print(f"  R4 (ANODE>=NODE acc @50): NODE {node_acc:.4f} vs ANODE {an_acc:.4f} "
               f"-> REFUTED if ANODE<NODE beyond noise")
         print(f"  S1 STOP-check (NODE acc<=0.70 @>=50 => contradicts Dupont 'eventually approximates'): "

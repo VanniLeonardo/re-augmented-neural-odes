@@ -59,14 +59,15 @@ per-row flag is `recon_ok`.
   and the NFE lower-bounded.
 
 Several conclusions in this project were withdrawn for this reason. The clearest case is the
-one-dimensional crossing flow, first measured at `atol=rtol=1e-3`. At that tolerance the
-check fails for all ten trained models, and the worst reconstructs its input with a relative
-error above 10. The conclusion survived re-measurement, but it had not been established.
+one-dimensional crossing flow at `atol=rtol=1e-3`, the tolerance both original papers specify.
+At that tolerance the check fails for 11 of 15 trained models, and the worst reconstructs its
+input with a relative error of 25. The conclusion survives at a checked tolerance, but at
+1e-3 it is not established.
 
 The image experiments show the same problem in a milder form. At the `1e-3` tolerance used
 for training, the check fails on every trained model, on both datasets and all five seeds.
 Re-measured at a tolerance that passes, accuracy moves by at most 0.11 points on average and
-0.37 points for the worst seed. Accuracy is robust to integration error and cost is not, so
+0.40 points for the worst seed. Accuracy is robust to integration error and cost is not, so
 both are now quoted at checked tolerances (`make fig-d3` and `make fig-d4` print the
 comparison, and `figures/d{3,4}/acc_vs_tol.png` show it).
 
@@ -82,16 +83,16 @@ paper. Raw numbers and the condition recorded before each run are in
 
 | ID | Claim | Result | Figure |
 |---|---|---|---|
-| `d8` | A 1-D Neural ODE flow preserves order and cannot represent the crossing map (Prop. 1, Fig. 3) | Reproduced. At 1e-7, where both models pass the check: NODE MSE **1.0002**, ANODE-p1 **0.0007**. The NODE sits at the theoretical floor of 1.0 rather than below it. | `make fig-d8` |
-| `d1` | NODE cost grows with the training budget, ANODE stays flat (§4.2, Fig. 6) | Reproduced on both geometries. Spheres at 50 epochs: NODE 218 NFE against ANODE 170. Growth ×1.74 against ×1.04 over 25 to 500 epochs. | `make fig-d1` |
-| `d2` | NODE generalises poorly across an unobserved angular wedge (§5.1, Fig. 9) | Reproduced. Held-out accuracy NODE **0.619** against ANODE **1.000**, loss 6.089 against 0.000. The wedge `[0, π/5]` was verified against the paper text. | `make fig-d2` |
-| `d3` | Matched-parameter ANODE beats NODE on MNIST and is cheaper (Table 1) | Reproduced, partial on the NODE number. At 1e-6, where both pass: ANODE **98.05 ± 0.19** against 98.2 ± 0.1, NODE **94.16 ± 0.44** against 96.4 ± 0.5. The NODE undershoot of about 2.2 points is consistent across two runs. ANODE is 1.65 to 2.10 times cheaper in NFE. | `make fig-d3` |
-| `d4` | The same on CIFAR-10 (Table 1) | Reproduced, partial on the ANODE number. At 1e-5, where both pass: NODE **53.69 ± 0.81** against 53.7 ± 0.2, ANODE **60.04 ± 0.94** against 60.6 ± 0.4. An earlier run on other hardware gave 59.34, so the shortfall is smaller than our run-to-run spread. ANODE is 1.24 to 1.93 times cheaper in NFE. | `make fig-d4` |
+| `d8` | A 1-D Neural ODE flow preserves order and cannot represent the crossing map (Prop. 1, Fig. 3) | Reproduced, at Dupont's d=1 settings. At 1e-7, where every arm passes on the remaining seeds: NODE MSE **1.0001**, ANODE-p1 and ANODE-p5 **0.0000**. The NODE sits at the theoretical floor of 1.0 rather than below it. One NODE seed fails the check at every tolerance down to 1e-9 and is reported separately. Its MSE is 1.0000. | `make fig-d8` |
+| `d1` | NODE cost grows with the training budget, ANODE stays flat (§4.2, Fig. 6) | Reproduced on both geometries. Spheres at 50 epochs, median over seeds: NODE 218 NFE against ANODE 170. Growth ×1.74 against ×1.04 over 25 to 500 epochs, or ×1.37 on the four seeds that pass the check at both ends. | `make fig-d1` |
+| `d2` | NODE generalises poorly across an unobserved angular wedge (§5.1, Fig. 9) | Reproduced. Held-out accuracy, median over 5 seeds: NODE **0.619** against ANODE **1.000**, loss 6.089 against 0.000. The NODE seeds spread widely (IQR 0.613 to 0.921), and one scores 1.000. The wedge `[0, π/5]` was verified against the paper text. | `make fig-d2` |
+| `d3` | Matched-parameter ANODE beats NODE on MNIST and is cheaper (Table 1) | Reproduced, partial on the NODE number. At 1e-7, where both pass in every run: ANODE **98.05 ± 0.20** against 98.2 ± 0.1, NODE **94.16 ± 0.44** against 96.4 ± 0.5. The NODE undershoot of about 2.2 points is consistent across two runs. ANODE is 1.91 times cheaper in NFE, and 2.10 in an independent retrain. | `make fig-d3` |
+| `d4` | The same on CIFAR-10 (Table 1) | Reproduced, partial on the ANODE number. At 1e-6, where both pass in every run: NODE **53.70 ± 0.83** against 53.7 ± 0.2, ANODE **60.04 ± 0.94** against 60.6 ± 0.4. An earlier run on other hardware gave 59.34, so the shortfall is smaller than our run-to-run spread. ANODE is 1.26 to 1.32 times cheaper in NFE. | `make fig-d4` |
 
 ### Chen et al. 2018
 
 Chen's Table 1 is deliberately not reproduced. Our MNIST rows are our own seeded baselines
-and are not a claim about that table (`DEVIATIONS.md`, row C4).
+and are not a claim about that table (`DEVIATIONS.md`, row S4).
 
 | ID | Claim | Result | Figure |
 |---|---|---|---|
@@ -122,8 +123,9 @@ excluded. Held-out accuracy, median over seeds:
 - On the circles the gap is smaller and is not monotone in width. A one-seed pilot suggested
   there would be no gap at all, and we predicted the check would fail. Ten seeds showed the
   pilot seed was an outlier.
-- The failure is specific to the unobserved region. Every model, including the NODE, scores
-  at least 0.998 on the observed region.
+- The failure is specific to the unobserved region. The median run in every cell, NODE
+  included, scores at least 0.998 on the observed region. Individual runs dip lower (27 of 294
+  below 0.998), far less than on the held-out wedge.
 - More augmentation is not uniformly better. p = 2 generalises best at the widest wedge on
   both geometries (`DEVIATIONS.md`, row A12).
 - The grid reproduces the committed Figure 9 cells exactly, in all ten matched cells.
@@ -138,7 +140,7 @@ repository. SVHN and ImageNet are excluded too. See [`OUT_OF_SCOPE.md`](OUT_OF_S
 ## Reproducing from scratch
 
 ```bash
-make reproduce-all       # everything (~15-20 GPU-h)
+make reproduce-all       # everything (~15-20 GPU-h, plus ~5 h CPU)
 make reproduce-dupont    # d8 d1 d2 d3 d4
 make reproduce-chen      # c4 c2 c3 c1
 make d4                  # or any single claim
@@ -150,7 +152,7 @@ yours.
 
 | Target | What | Cost | Device |
 |---|---|---|---|
-| `d8` | 1-D crossing flow | ~5 min | CPU |
+| `d8` | 1-D crossing flow | ~10 min | CPU |
 | `d1` | Toy separation, NFE against budget | ~2 h | CPU |
 | `d2` | Missing-slice generalisation | ~1-2 h | CPU |
 | `d3` | Matched-parameter MNIST | 1.9 h serial (measured) | GPU |
@@ -199,10 +201,11 @@ network. Logging defaults to a CSV backend and needs no Weights and Biases accou
 The canonical MNIST host `yann.lecun.com` now returns HTTP 404. torchvision falls back to the
 `ossci-datasets` S3 mirror, which works today, so reproduction currently depends on a
 third-party mirror. If that mirror is unreachable, the loaders raise an explicit error naming
-the directory to populate. On an air-gapped machine, copy the dataset directory in:
+the directory to populate. To run on a machine without network access, copy the dataset directory to it from one that
+has access:
 
 ```bash
-rsync -az data/cifar-10-batches-py/ host:/path/to/repo/data/cifar-10-batches-py/
+rsync -az data/cifar-10-batches-py/ offline-host:/path/to/repo/data/cifar-10-batches-py/
 ```
 
 ---
