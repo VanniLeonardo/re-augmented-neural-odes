@@ -340,22 +340,55 @@ rather than a general fitting problem; and more augmentation is not monotonicall
 $p=2$ generalising best at the widest wedge on both geometries.
 
 \subsubsection{Claim 4: matched-parameter image benchmarks}
-% make fig-d3 (MNIST), make fig-d4 (CIFAR-10). State both undershoots plainly and
-% give the NFE ratio as a range across tolerances and runs, not a single number.
+
+Table~\ref{tab:table1} gives our matched-parameter results beside the original's, each quoted at
+the loosest tolerance where both arms pass the reconstruction check on every seed. The ordering
+the claim asserts is reproduced on both datasets: the augmented model is more accurate, by
+3.9 percentage points on MNIST and 6.4 on CIFAR-10, and it is also cheaper, requiring
+1.65--2.10 times fewer function evaluations on MNIST and 1.24--1.93 times fewer on CIFAR-10
+across the faithful tolerances and across two independent runs. We give those as ranges
+deliberately: the accuracy figures are stable across runs, but the NFE ratio is not, and quoting
+a single number for it would suggest a precision we do not have.
+
+Two of the four absolute numbers land on the original's and two undershoot. The CIFAR-10 Neural
+ODE matches within noise. The MNIST augmented model matches. The MNIST Neural ODE falls about
+2.2 points short, consistently across two independent runs, and the CIFAR-10 augmented model
+falls 0.6 points short in the run reported here and 1.3 points short in an earlier run on
+different hardware --- a spread that is itself larger than the shortfall, so we report it as a
+small undershoot rather than claiming either a match or a discrepancy. The most likely
+explanations are the reduced epoch budgets and the five-seed sample (Section~\ref{sec:deviations});
+we did not tune towards the published values, and the pre-registered conditions concerned the
+ordering, which holds.
 
 \begin{table}[h]
   \centering
-  \caption{Matched-parameter image results against Dupont Table 1, quoted at the
-           loosest tolerance where both arms pass the reconstruction check.
-           TODO: fill from \texttt{make fig-d3} and \texttt{make fig-d4}.}
+  \small
+  \caption{Matched-parameter image results, mean $\pm$ s.d. over five seeds, quoted at the
+           loosest tolerance where both arms pass the reconstruction check.}
   \label{tab:table1}
-  \begin{tabular}{lllll}
+  \begin{tabular}{@{}llccc@{}}
     \toprule
     Dataset & Model & This replication & Original & Tolerance \\
     \midrule
+    MNIST    & Neural ODE & $94.16 \pm 0.44$ & $96.4 \pm 0.5$ & $10^{-6}$ \\
+    MNIST    & ANODE ($p=5$)  & $98.05 \pm 0.19$ & $98.2 \pm 0.1$ & $10^{-6}$ \\
+    CIFAR-10 & Neural ODE & $53.69 \pm 0.81$ & $53.7 \pm 0.2$ & $10^{-5}$ \\
+    CIFAR-10 & ANODE ($p=10$) & $60.04 \pm 0.94$ & $60.6 \pm 0.4$ & $10^{-5}$ \\
     \bottomrule
   \end{tabular}
 \end{table}
+
+\paragraph{The tolerance the accuracies are measured at.}
+These models are \emph{trained} at $10^{-3}$, and at that tolerance the reconstruction check fails
+for every model and every seed on both datasets. Our first version of this experiment measured
+accuracy there, which meant the headline numbers came from a regime in which the solver was not
+tracking the flow. We therefore re-ran both experiments with the training tolerance included in
+the evaluation ladder and the test set re-evaluated at every tolerance. Accuracy turns out to be
+almost insensitive to this: it moves by at most 0.11 points on average and 0.37 points for the
+worst single seed between the training tolerance and a checked one. The cost measurements are a
+different matter --- the forward NFE at $10^{-7}$ is several times its value at $10^{-3}$ --- which
+is why we quote accuracy and cost at checked tolerances throughout, and why the distinction is
+worth making even when, as here, the conclusion does not change.
 
 \subsection{Results reproducing Chen et al.}
 
