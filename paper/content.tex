@@ -490,10 +490,67 @@ Re-checking the time--NFE correlation within each hardware group gives $\rho$ be
 manufactured it. The check is now part of the analysis script rather than a remark.
 
 \subsubsection{Claim 6: backward versus forward NFE}
-% NOT reproduced -- the strongest negative result here. Present as a tolerance x field
-% surface with the mechanism (our adjoint solves a stiffer augmented system).
-% figures/c2/ (make fig-c2). ReScience expects a documented failure claim; see also
-% Section \ref{sec:communication}.
+\label{sec:claim6}
+
+This is the one claim we do not reproduce, and rather than report the discrepancy we tried to
+account for it.
+
+Measured on a trained convolutional ODE-Net at a tolerance that passes the reconstruction check,
+the adjoint's backward pass costs \textbf{123 times} the forward pass in function evaluations with
+\texttt{dopri5}, and 203 times with \texttt{bosh3} --- not the roughly one half the original
+reports. On the two-dimensional fields the ratios are smaller but still far above one (25 to 96
+for \texttt{dopri5}). The gradients are correct throughout: every figure quoted here comes from a
+cell whose parameter gradients agree with direct backpropagation at high accuracy to within 1\%,
+so this is a real cost and not a broken solve.
+
+We tested three explanations, each pre-registered with the effect size that would count
+(Figure~\ref{fig:c2diag}). Of 456 configurations, 18 exceeded a fifteen-minute cap and 316 passed
+both the reconstruction and the gradient check; only those carry the conclusions.
+
+\emph{Solver family.} The original used implicit Adams, a stiff-capable method, while we and most
+current users reach for an explicit Runge--Kutta pair, and the adjoint integrates a stiffer
+augmented system than the forward pass. This is the obvious explanation and it is wrong. A
+stiff-capable adaptive solver is not cheaper here: on the toy field \texttt{scipy:LSODA} gives a
+ratio of 2159 and \texttt{scipy:BDF} 28, against \texttt{dopri5}'s 25, and on the convolutional
+field no SciPy cell finished within the cap at all.
+
+\emph{Adjoint tolerance.} This is the dominant factor. The adjoint system need not be solved at
+the same tolerance as the forward pass, but \texttt{torchdiffeq} couples them by default, and so
+did we. Decoupling them --- solving the adjoint at a tolerance 100 times looser --- reduces the
+ratio by between 5 and 76 times across 15 of 17 solver-tolerance combinations, taking the
+convolutional field from 123 to \textbf{4.1} with gradients still correct to within 1\%. Most of
+the gap between our measurement and the original's is therefore attributable not to the model, the
+field or the solver, but to the tolerance at which the reverse system is integrated.
+
+\emph{Field stiffness.} We expected the ratio to grow as the field trains, and pre-registered that
+it would do so for every solver. It does not: in 5 of 16 combinations the untrained field has the
+\emph{higher} ratio, so that hypothesis is refuted as stated, and it also corrects a claim we had
+made earlier in this project. The likely reason is instructive --- the ratio conflates two
+quantities, and on an easily-integrated field the \emph{forward} count is small, so even a modest
+backward cost yields a large ratio. A ratio is a poor summary statistic for this quantity, and we
+would suggest reporting the two counts separately.
+
+Is the original's value reachable at all? In a checked configuration, yes: the lowest ratio we
+observe is 0.78. But that requires deliberately decoupling the adjoint tolerance, and it occurs on
+the toy field with a low-order solver. Restricted to the adjoint solved at the forward tolerance
+--- the library default, and the natural reading of the original setup --- the lowest ratio we
+observe anywhere is 5.96, and on the convolutional field the original used, 119. We therefore
+report claim 6 as not reproduced, with the qualification that the quantity is a property of the
+adjoint's \emph{configuration} rather than of the adjoint method as such.
+
+One limitation bounds this conclusion. We could not evaluate the original's actual solver:
+\texttt{torchdiffeq}'s implicit Adams is fixed-step, so its evaluation count is set by the step
+count rather than by stiffness, and the adaptive stiff-capable alternatives do not complete on the
+convolutional field. We can therefore say that the gap is dominated by the adjoint tolerance and is
+not removed by moving to a stiff-capable solver; we cannot say how the original's exact
+configuration would behave.
+
+\resfig{../figures/c2_diagnosis/c2_diagnosis.png}
+  {Claim 6. Backward/forward NFE against forward tolerance, on the toy field (left) and the
+   convolutional field (right), for each solver with the adjoint solved at the forward tolerance
+   (solid) and 100 times looser (dashed). The dotted line is the value reported in the original.
+   Only cells passing both the reconstruction and the gradient check are shown.}
+  {fig:c2diag}
 
 \subsubsection{Claim 7: NFE growth during training}
 
