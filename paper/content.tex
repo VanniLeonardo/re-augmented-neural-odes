@@ -393,9 +393,36 @@ worth making even when, as here, the conclusion does not change.
 \subsection{Results reproducing Chen et al.}
 
 \subsubsection{Claim 5: solver dynamics}
-% figures/c1/solver_dynamics.png (make fig-c1). Includes the ONE pre-declared check
-% that was refuted, and where the violation lies (non-integrating tolerances).
-% Do not soften this.
+
+We trained a convolutional ODE-Net, froze it, and swept the solver at evaluation, measuring the
+endpoint error against a high-accuracy reference (an eighth-order method at $10^{-8}$), the
+forward wall-clock, and the function evaluations. Both halves of the claim hold. Error falls
+monotonically as the tolerance tightens, for every adaptive solver tested. Forward time is
+strongly rank-correlated with NFE: Spearman's $\rho$ between 0.983 and 0.992 per solver.
+
+The cost half of the claim, however, was pre-registered as \emph{monotone} and by that condition
+it is refuted: \texttt{dopri5}'s median NFE falls from 26 to 20 between tolerances $10^{-1}$ and
+$10^{-2}$. We report the refutation as it stands rather than restating the claim to fit. Where the
+violation lies is nonetheless informative --- both of those rows fail the reconstruction check on
+every seed, so the step sizes the controller chooses there are not tracking the flow, and among
+rows that do pass the check the cost is monotone. The honest summary is that cost rises with
+tolerance wherever the solver is actually integrating, and behaves erratically where it is not.
+
+Two observations came out of this experiment that bear on the rest of the article. First, the
+reference itself is expensive in a revealing way: its cost grows by a factor of 5--7 per decade of
+tolerance, where an eighth-order method on a non-stiff field should cost roughly $1.3\times$ per
+decade. That gap is a direct measurement of the stiffness of a trained Neural ODE field, and it is
+why high-accuracy references on these models are costly. Second, a nominal tolerance is not
+comparable across solvers: at $10^{-5}$, \texttt{dopri5} spends 116 function evaluations and lands
+just at the edge of the reconstruction check, while \texttt{bosh3} spends 227 and \texttt{dopri8}
+1055 for reconstruction errors an order of magnitude smaller. The tolerance is a request, not a
+guarantee; the reconstruction check is what makes the comparison meaningful.
+
+Finally, this experiment is where recording hardware per row earned itself. The five seeds were
+scheduled across two different GPU partition sizes, so the pooled wall-clock mixed machines.
+Re-checking the time--NFE correlation within each hardware group gives $\rho$ between 0.991 and
+0.997 --- tighter than the pooled figure, so the confound had weakened the result rather than
+manufactured it. The check is now part of the analysis script rather than a remark.
 
 \subsubsection{Claim 6: backward versus forward NFE}
 % NOT reproduced -- the strongest negative result here. Present as a tolerance x field
@@ -404,12 +431,35 @@ worth making even when, as here, the conclusion does not change.
 % Section \ref{sec:communication}.
 
 \subsubsection{Claim 7: NFE growth during training}
-% figures/mnist_nfe/, figures/mnist_stiffening/ (make fig-c3). Note that the
-% recon-faithful tolerance itself tightens as training proceeds.
+
+Measured on the convolutional ODE-Net at a tolerance that passes the reconstruction check on every
+seed and epoch ($10^{-7}$), the forward NFE grows from \textbf{384 to 738} over six epochs, in
+every one of five seeds. The claim reproduces.
+
+The more interesting quantity is not the NFE but the tolerance. Over the same six epochs the
+fraction of seeds passing the check at $10^{-5}$ falls from 1.0 to 0.4, while $10^{-6}$ and
+$10^{-7}$ continue to hold: the field does not merely become more expensive to integrate, it
+becomes harder to integrate \emph{at all} at a fixed tolerance. This is the mechanism behind
+Section~\ref{sec:recon}, measured directly, and it is why a tolerance chosen at the start of
+training cannot be assumed to remain adequate at the end. A companion ten-epoch run at a single
+tolerance of $10^{-5}$ illustrates the trap: its NFE curve rises smoothly and looks entirely
+reasonable, but by the final epoch none of its five seeds passes the check, so the right-hand half
+of that curve does not measure an integrated flow.
 
 \subsubsection{Claim 8: constant-memory adjoint}
-% figures/c4/memory_vs_nfe.png (make fig-c4). Corrected experiment: the axis that
-% matters is the ODE-Net's own NFE, not the depth of a discrete baseline.
+
+The original's memory claim concerns the ODE-Net's own effective depth, but the natural-looking
+experiment --- varying the depth of a discrete baseline and reporting the ODE-Net as a single point
+--- tests the wrong axis, which is what an earlier version of this project did. The claim requires
+holding the model fixed and driving \emph{its} number of function evaluations up.
+
+Doing that by tightening the solver tolerance, peak memory under the adjoint is flat at
+\textbf{$+0.0007$ MB per function evaluation} (442 MB across a fivefold increase in NFE), while
+direct backpropagation through the solver rises at \textbf{$+31.8$ MB per function evaluation}
+(689 MB to 3185 MB over the same range). The claim reproduces, and the two methods' gradients
+agree throughout to within half a percent, so the constant memory is not bought with a worse
+gradient. This experiment used three seeds rather than the five we use elsewhere; the effect is
+four orders of magnitude and unambiguous in every seed, but we note the smaller sample.
 
 \subsection{Results beyond the original papers}
 % The missing-slice grid: augmentation x wedge width x geometry x 10 seeds.
