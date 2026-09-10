@@ -80,14 +80,14 @@ def cpu_name() -> str:
     return "cpu"
 
 
-def build_field(field: str, seed: int, epochs: int, tol: float, cfg, device):
+def build_field(field: str, seed: int, epochs: int, train_tol: float, cfg, device):
     """Return (func, y0) -- the vector field under test and a fixed input batch."""
     set_seed(seed)
     if field == "spheres":
         X, Y = make_spheres(n_samples=1200, noise=0.05, seed=seed)
         model = ODENet(data_dim=2, hidden_dim=2, num_classes=2, augment_dim=0,
                        ode_hidden_dim=32, use_stem=False, head_hidden_dim=None,
-                       solver_type="dopri5", atol=tol, rtol=tol,
+                       solver_type="dopri5", atol=train_tol, rtol=train_tol,
                        solver_options={"max_num_steps": 10_000_000}).to(device)
         if epochs:
             loader = DataLoader(TensorDataset(X, Y), batch_size=64, shuffle=True)
@@ -99,7 +99,7 @@ def build_field(field: str, seed: int, epochs: int, tol: float, cfg, device):
 
     model = ConvODENet(in_channels=1, num_filters=cfg.filters, num_classes=10,
                        solver_type="dopri5").to(device)
-    model.ode_block.atol = model.ode_block.rtol = tol
+    model.ode_block.atol = model.ode_block.rtol = train_tol
     ckpt = Path(cfg.ckpt_dir) / f"c1_seed{seed}_f{cfg.filters}_e{cfg.mnist_epochs}.pt"
     if epochs and ckpt.exists():
         model.load_state_dict(torch.load(ckpt, map_location=device, weights_only=True))
@@ -215,6 +215,10 @@ def main() -> None:
     p.add_argument("--tols", default="1e-3,1e-5,1e-7")
     p.add_argument("--adj_offsets", default="1,100",
                    help="adjoint tol = forward tol x offset (1 = same, 100 = looser)")
+    p.add_argument("--train_tol", type=float, default=1e-6,
+                   help="tolerance the field is TRAINED at -- fixed, and independent of the "
+                        "evaluation ladder (training at the tightest evaluated tolerance is "
+                        "both unfaithful to how these models are trained and ruinously slow)")
     p.add_argument("--ref_tol", type=float, default=1e-9)
     p.add_argument("--batch", type=int, default=64)
     p.add_argument("--filters", type=int, default=64)
@@ -245,7 +249,7 @@ def main() -> None:
     for trained in states:
         for seed in seeds:
             epochs = cfg.epochs if trained else 0
-            func, y0 = build_field(cfg.field, seed, epochs, min(tols), cfg, device)
+            func, y0 = build_field(cfg.field, seed, epochs, cfg.train_tol, cfg, device)
             ref_g, ref_tol_used = reference_grads(func, y0, t, cfg.ref_tol)
             print(f"  [{cfg.field} seed {seed} trained={trained}] reference gradients at "
                   f"{ref_tol_used:.0e}", flush=True)
