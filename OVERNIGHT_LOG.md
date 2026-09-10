@@ -817,3 +817,38 @@ excluded. RAW held-out-slice accuracy, median [IQR] over 10 seeds:
 - **Consistency: EXACT.** The grid's (spheres, π/5, NODE/ANODE-p1, seeds 0–4) cells reproduce the
   committed D2 held-out accuracies with max difference **0.0000** over 10 matched cells — fresh
   runs, two months later, single-threaded instead of multi-threaded, same machine.
+
+## [6] C2 DIAGNOSIS — PRE-DECLARED (why does Chen Fig. 3c not reproduce?)
+Claim 6 (backward NFE ≈ ½ forward NFE) is the one claim we report as NOT reproduced. Instead of
+leaving it at "we measured 13–121×", we diagnose the cause. `scripts/run_c2_diagnosis.py`:
+solver × forward tolerance × **adjoint tolerance** × field × seeds, every cell carrying the
+reconstruction check AND a gradient-correctness check against direct backprop at 1e-9.
+- **Why gradient correctness is in the design:** a configuration that is cheap because it solves
+  the adjoint badly is not evidence about cost. Cells with grad_reldiff ≥ 1e-2 are recorded and
+  excluded from any conclusion, never silently counted as cheap.
+- **H1 (solver family):** Chen used implicit Adams (adaptive, stiff-capable); we used dopri5
+  (explicit RK), and the adjoint's augmented reverse system is stiffer than the forward one.
+  Claim: a stiff-capable adaptive solver gives a ratio ≥5× smaller than dopri5 at matched
+  tolerance. **REFUTED if** its ratio is within 2× of dopri5's, or larger.
+  (torchdiffeq's `implicit_adams` is FIXED-step and so is not a fair proxy; `scipy_solver` with
+  LSODA/BDF is the closest adaptive stiff-capable analogue and stands in for Chen's solver.)
+- **H2 (adjoint tolerance):** we solved the reverse system at the SAME tolerance as the forward
+  pass. Claim: loosening the adjoint tolerance 100× relative to the forward reduces the ratio by
+  ≥5×. **REFUTED if** <2×.
+- **H3 (field stiffness):** the ratio grows with training, for every solver. **REFUTED if**
+  untrained ≈ trained.
+- **REVISION TRIGGER (can overturn our own negative result):** if any configuration faithful to
+  Chen's description reaches ratio ≤1 at a tolerance that is BOTH recon-faithful and
+  gradient-correct, then "Claim 6 does not reproduce" is WRONG as stated, and the paper must say
+  the ratio is a property of the adjoint solver *configuration* — not that Chen's claim fails.
+- **Probe SEEN before this entry (1 seed, spheres, 100 ep, tol 1e-5 — NOT a result):**
+  dopri5 same-tol **24.4**; dopri5 adjoint ×100 looser **1.60**; scipy:LSODA same-tol **1988**;
+  scipy:LSODA ×100 **3.79**; scipy:BDF **19.4 → 14.4**. All grad_ok. Recorded because it was seen
+  before the hypotheses were written; the hypotheses are unchanged by it.
+  **Prediction on record: H1 REFUTED (the stiff solver is far worse, not better), H2 SUPPORTED,
+  and the revision trigger likely FIRES** — in which case our Claim 6 reporting changes from
+  "not reproduced" to "reproduced only when the adjoint is solved at its own, looser tolerance",
+  which is a scope condition on Chen's claim rather than a contradiction of it.
+- Stage A: toy spheres, 7 solvers × 3 tols × 2 adjoint offsets × 5 seeds × {trained, untrained},
+  CPU, sharded per seed. Stage B: MNIST conv field on the A100s, reduced grid, reusing the C1
+  checkpoints. Per-cell 15 min timeout — a runaway cell is recorded as capped, not a hung job.
