@@ -28,7 +28,7 @@ this file comes from the official ReScience C template at
 GPL-3 or later, see `COPYING`. The bundled fonts carry their own licences in their
 directories.
 
-Three changes were made to the template, each marked in place:
+Four changes were made to the template, each marked in place:
 
 1. `article.tex` adds `\usepackage{booktabs}`. The class loads `tabularx` but not `booktabs`,
    and the result tables need it.
@@ -38,6 +38,10 @@ Three changes were made to the template, each marked in place:
    commented, which also matches those articles.
 3. `Makefile` adds `header.tex` as a prerequisite of `article.pdf`. It was missing, so editing
    the header did not trigger a rebuild.
+4. `header.tex` redefines `\authorsSHORT`, `\authorsABBRV` and `\authorsFULL`. With more than
+   three authors the class abbreviates the list to "<first author> et al." in the page footer,
+   the copyright line and the PDF metadata. The authors are in alphabetical order and none of
+   them leads the work, so all six are named in each place.
 
 `rescience.cls` loads its fonts by relative path, so the four font directories must stay next
 to `article.tex`. They account for about 8 MB of this directory. `metadata.tex` and
@@ -61,7 +65,7 @@ to `article.tex`. They account for about 8 MB of this directory. `metadata.tex` 
 
 | Item | Where |
 |---|---|
-| ORCIDs, institutional emails, department | `metadata.yaml` |
+| ORCIDs and emails for the five co-authors | `metadata.yaml` |
 | Zenodo DOI for the tagged submission commit | `metadata.yaml` |
 | If the code moves to another repository, update `code: url:` to match the repository the DOI is minted from | `metadata.yaml` |
 | The outcome of writing to the original authors | `content.tex`, and the table in `correspondence.md` |

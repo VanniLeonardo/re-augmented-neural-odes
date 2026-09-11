@@ -1,6 +1,6 @@
 # ReScience C submission metadata.
-# Filled where the repository already determines the answer; every remaining
-# TODO needs a human decision (co-author identity, ORCIDs, Zenodo DOI, abstract).
+# Filled where the repository already determines the answer. The remaining TODOs
+# are the co-authors' ORCIDs and emails, and the Zenodo DOI for the tagged commit.
 
 # Title of the article:
 #  - "[Re]" prefix = successful replication, "[¬Re]" = failed replication.
@@ -10,14 +10,10 @@
 #    editors read the MNIST NODE undershoot as a failure, this prefix must change.
 title: "[Re] Augmented Neural ODEs"
 
-# List of authors with name, orcid number, email and affiliation
-# Affiliation "*" means contact author (required even for single-authored papers)
+# List of authors with name, orcid number, email and affiliation.
+# Affiliation "*" means contact author (required even for single-authored papers).
+# Authors are in alphabetical order by surname.
 authors:
-  - name: Leonardo Vanni
-    orcid:                       # TODO
-    email: leogarda@gmail.com    # TODO: institutional address if preferred
-    affiliations: 1,*            # * is for contact author
-
   - name: Giuseppe Bassi
     orcid:                       # TODO
     email:                       # TODO
@@ -43,11 +39,16 @@ authors:
     email:                       # TODO
     affiliations: 1
 
+  - name: Leonardo Vanni
+    orcid: 0009-0003-1869-9286
+    email: leonardo.vanni@tum.de
+    affiliations: 1,*            # * is for contact author
+
 # List of affiliations with code (corresponding to author affiliations), name
 # and address.
 affiliations:
   - code:    1
-    name:    Bocconi University          # TODO: confirm department/school
+    name:    Bocconi University
     address: Milan, Italy
 
 # List of keywords (adding the programming language might be a good idea)

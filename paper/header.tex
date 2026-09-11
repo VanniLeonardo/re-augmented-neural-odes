@@ -49,6 +49,16 @@
 }
  
 
+% LOCAL ADDITION to the upstream template: with more than three authors the class
+% abbreviates the author list to "<first author> et al." in the page footer, the
+% copyright line and the PDF metadata. The authors here are in alphabetical order
+% and none of them leads the work, so all six are named in each place.
+\def\authorsSHORT{Bassi, Ben Nefla, Grossi, Notaro, Porta and Vanni}
+\def\authorsABBRV{G. Bassi, K. Ben Nefla, G. Grossi, A. Notaro, B. Porta and L. Vanni}
+\def\authorsFULL{Giuseppe Bassi, Kabir Ben Nefla, Gaia Grossi, Anna Notaro, Beatrice Porta
+  and Leonardo Vanni}
+\hypersetup{pdfauthor={\authorsFULL}}
+
 %% --- Bottom statement -------------------------------------------------------
 \newcommand{\container}[1]{\def\@container{#1}}
 \begin{container}
