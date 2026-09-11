@@ -74,9 +74,12 @@
   
       The authors have declared that no competing interests exist.
 
+      % LOCAL FIX to the upstream template: each of the three branches below ended in
+      % its own full stop, so a record with a DOI and no Software Heritage identifier
+      % printed two. The full stop is now printed once, at the end.
       \ifdefempty{\codeURL}{}
       {Code is available at
-      \href{\codeURL}{\detokenize\expandafter{\codeURL}}\ifdefempty{\codeDOI}{.}{ -- DOI \doi{\codeDOI}.}\ifdefempty{\codeSWH}{.}{ -- SWH  \href{https://archive.softwareheritage.org/\codeSWH/}{\detokenize\expandafter{\codeSWH}}.}}
+      \href{\codeURL}{\detokenize\expandafter{\codeURL}}\ifdefempty{\codeDOI}{}{ -- DOI \doi{\codeDOI}}\ifdefempty{\codeSWH}{}{ -- SWH  \href{https://archive.softwareheritage.org/\codeSWH/}{\detokenize\expandafter{\codeSWH}}}.}
 
       \ifdefempty{\dataURL}{}
       {Data is available at

@@ -54,11 +54,14 @@ affiliations:
 # List of keywords (adding the programming language might be a good idea)
 keywords: rescience c, python, pytorch, neural ordinary differential equations, augmented neural odes, torchdiffeq
 
-# Code URL and DOI/SWH (url is mandatory for replication, doi after acceptance)
+# Code URL and DOI/SWH (url is mandatory for replication, doi after acceptance).
+# The concept DOI is used rather than the DOI of one release, so that a later
+# release (for example to add the co-authors' ORCIDs) does not leave this stale.
+# The snapshot submitted is v1.0.0, 10.5281/zenodo.22704200.
 code:
   - url: https://github.com/VanniLeonardo/re-augmented-neural-odes
-  - doi:      # TODO: mint a Zenodo DOI for the tagged submission commit
-  - swh:      # TODO: or a Software Heritage identifier
+  - doi: 10.5281/zenodo.22704199   # concept DOI: always resolves to the newest release
+  - swh:
 
 # Data URL and DOI (optional if no data)
 # MNIST and CIFAR-10 are standard public datasets fetched by the data loaders at

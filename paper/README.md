@@ -28,7 +28,7 @@ this file comes from the official ReScience C template at
 GPL-3 or later, see `COPYING`. The bundled fonts carry their own licences in their
 directories.
 
-Four changes were made to the template, each marked in place:
+Five changes were made to the template, each marked in place:
 
 1. `article.tex` adds `\usepackage{booktabs}`. The class loads `tabularx` but not `booktabs`,
    and the result tables need it.
@@ -42,6 +42,9 @@ Four changes were made to the template, each marked in place:
    three authors the class abbreviates the list to "<first author> et al." in the page footer,
    the copyright line and the PDF metadata. The authors are in alphabetical order and none of
    them leads the work, so all six are named in each place.
+5. `header.tex` prints one full stop at the end of the "Code is available at" line. Each
+   branch of that line ended in its own, so a record with a DOI and no Software Heritage
+   identifier printed two.
 
 `rescience.cls` loads its fonts by relative path, so the four font directories must stay next
 to `article.tex`. They account for about 8 MB of this directory. `metadata.tex` and
@@ -66,6 +69,16 @@ to `article.tex`. They account for about 8 MB of this directory. `metadata.tex` 
 | Item | Where |
 |---|---|
 | ORCIDs and emails for the five co-authors | `metadata.yaml` |
-| Zenodo DOI for the tagged submission commit | `metadata.yaml` |
+| A release after the co-authors' ORCIDs land, so the archive matches the article | Zenodo, then nothing in the paper: the concept DOI covers it |
 | If the code moves to another repository, update `code: url:` to match the repository the DOI is minted from | `metadata.yaml` |
 | The outcome of writing to the original authors | `content.tex`, and the table in `correspondence.md` |
+
+## Archived code
+
+The code is archived on Zenodo. `metadata.yaml` cites the concept DOI,
+10.5281/zenodo.22704199, which always resolves to the newest release. The snapshot
+submitted with this article is v1.0.0, 10.5281/zenodo.22704200.
+
+Anything committed after a release is absent from that release. Publishing another GitHub
+release archives the new state and mints a new version DOI under the same concept DOI, so
+the article does not need editing.
