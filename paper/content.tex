@@ -41,7 +41,8 @@ them within reach of a single GPU. The central empirical signature, the NFE, is 
 the solver as much as of the model. An adaptive solver given too loose a tolerance returns a
 plausible trajectory and a plausible NFE without tracking the flow. The vector field of a
 Neural ODE also stiffens during training, so a tolerance that is adequate early need not stay
-adequate. Several conclusions reached during this work were withdrawn for this reason. We
+adequate. Several conclusions reached during this work were withdrawn for this reason
+(Section~\ref{sec:withdrawn}). We
 therefore attach a reconstruction check to every measurement and quote each quantity at a
 tolerance where that check passes. Section~\ref{sec:recon} defines the check.
 
@@ -155,7 +156,8 @@ the flattening readout and record it in Section~\ref{sec:deviations}. The harnes
 the two arms are matched to within 2\% before every run.
 
 Both models were written from the descriptions in the two papers. We did not consult either
-author's implementation. The solver library \texttt{torchdiffeq}\supercite{torchdiffeq} is
+author's implementation. The original code for Figure~3 of Chen et al., which its authors
+later shared, was read only for the diagnosis of claim 6 (Section~\ref{sec:communication}). The solver library \texttt{torchdiffeq}\supercite{torchdiffeq} is
 used only to integrate. Its adaptive Dormand--Prince method, \texttt{dopri5}, is the default
 throughout, except where a claim concerns the solver itself.
 
@@ -414,9 +416,29 @@ ODE matches within noise, as does the MNIST augmented model. The MNIST Neural OD
 2.2 points short, consistently across two independent runs. The CIFAR-10 augmented model falls
 0.6 points short in the run reported here and 1.3 points short in an earlier run on different
 hardware. That spread is larger than the shortfall, so we report a small undershoot rather
-than a match or a discrepancy. The most likely causes are the reduced epoch budget and the
-five-seed sample, both listed in Section~\ref{sec:deviations}. We did not tune towards the
-published values. The conditions recorded before the run concerned the ordering, which holds.
+than a match or a discrepancy. We did not tune towards the published values.
+
+The MNIST Neural ODE shortfall needs its own explanation, because the augmented model,
+trained under identical settings, matches. Seed noise does not explain it: the gap is about
+five standard deviations and repeats across two runs on different hardware. Our hypothesis is
+that eight epochs under-train the Neural ODE but not the augmented model. At the final epoch
+the Neural ODE reaches a training accuracy of only 94.3\%, against 98.6\% for the augmented
+model, so it is underfitting rather than overfitting, and with parameter counts matched this
+points to optimisation rather than capacity. Its test accuracy also rises by 0.5 points over
+the last epoch in both runs, while the augmented model's is flat from the seventh epoch. The
+original states neither the epoch count nor the learning-rate schedule for these experiments,
+so a longer budget or a decaying schedule could close the gap for the Neural ODE alone.
+
+We tested the budget with three seeds trained for 20 epochs, otherwise unchanged. Before the
+run we required the epoch-20 accuracy, at a tolerance that passes the reconstruction check on
+all three seeds, to reach 95.9. That test could not be applied: by epoch 20 two of the three
+fields had stiffened beyond $10^{-7}$, the tightest tolerance on our ladder. The trajectories
+support the hypothesis without confirming it. At the training tolerance the mean test accuracy
+passes 95.9 at epoch 15 and peaks at 96.1 at epoch 17, with all three seeds between 96.0 and
+96.3, inside the original's interval, and training accuracy rises to 96.5. One seed then
+diverged and ended at 92.3, while the other two ended at 96.1 and 96.2. Without a learning-rate
+schedule the longer run is unstable. We therefore attribute the undershoot to the training
+budget with moderate confidence, and keep the 8-epoch value in Table~\ref{tab:table1}. The conditions recorded before the run concerned the ordering, which holds.
 
 \begin{table}[h]
   \centering
@@ -499,7 +521,7 @@ measured its cause.
 
 On a trained convolutional ODE-Net, at a tolerance that passes the reconstruction check, the
 backward pass costs \textbf{123 times} the forward pass in function evaluations with
-\texttt{dopri5}, and 203 times with \texttt{bosh3}. The original reports about one half. On
+\texttt{dopri5}, and 203 times with \texttt{bosh3}. The original reports about one half, but its own logs, discussed below, give about 0.8. On
 the two-dimensional fields the ratios are smaller but still far above one, between 25 and 96
 for \texttt{dopri5}. The gradients are correct in all cases. Every value quoted here comes
 from a configuration whose parameter gradients agree with direct backpropagation at high
@@ -521,8 +543,8 @@ at the tolerance of the forward pass, but \texttt{torchdiffeq} couples the two b
 so did we. Solving the adjoint at a tolerance 100 times looser reduces the ratio by a factor
 between 5 and 76, across 15 of 17 solver and tolerance combinations. On the convolutional
 field it takes the ratio from 123 to \textbf{4.1}, with gradients still correct to within 1\%.
-Most of the gap between our measurement and the original therefore comes from the tolerance at
-which the reverse system is integrated, rather than from the model, the field or the solver.
+Within our configuration the adjoint tolerance is therefore the dominant factor. It does not
+explain the gap to the original, which also solved the reverse system at the forward tolerance.
 
 \textbf{Field stiffness.} We expected the ratio to grow as the field trains, and recorded in
 advance that it would do so for every solver. It does not. In 5 of 16 combinations the
@@ -532,20 +554,62 @@ quantities. On a field that is easy to integrate the forward count is small, so 
 backward cost still produces a large ratio. A ratio is a poor summary statistic for this
 quantity, and the two counts are better reported separately.
 
-The value reported in the original is reachable in a checked configuration. The lowest ratio
+\textbf{The original measurement.} After our experiments for this claim had finished, the
+original authors shared the code and logs behind Figure~3 (Section~\ref{sec:communication}). The
+reverse system was solved with the implicit Adams method of SciPy's VODE at the same tolerance
+as the forward pass, as in our default configuration, and the backward count is the number of
+evaluations of the augmented system, as in ours. The forward counts plotted in Figure~3c,
+however, are not forward counts alone. The evaluation counter is reset after the forward count
+is recorded and the backward pass then increments it, so each recorded forward count also
+contains the previous batch's backward count, plus one evaluation that the adjoint makes
+outside the reverse solve. Where the counts are constant this accounts for every logged value
+exactly: at a tolerance of 1, every backward pass takes 6 evaluations and every recorded forward
+count after the first is $13 = 6 + 6 + 1$. Where they vary most, at the three tightest
+tolerances, each recorded forward count correlates with the previous batch's backward count
+(0.56 to 0.77) rather than with its own (0.25 to 0.29). A backward count somewhat below the
+forward count, plotted against their sum, appears as about one half
+(Figure~\ref{fig:chen3c}). Corrected, the original's ratio is \textbf{0.78 to 0.86} between $10^{-5}$ and $10^{-1}$.
+The original authors have reviewed this analysis and agree with it. The original took the ratio of one half as
+evidence that the adjoint is cheaper than backpropagating through the solver. At 0.8 that
+argument still holds for the original's configuration, by a smaller margin; in ours the
+reverse pass costs 13 to 123 times the forward pass.
+
+\resfig{../figures/chen_fig3c/fig3c_rebuilt.png}
+  {Claim 6. Panel (c) of the original Figure 3, rebuilt from the per-batch counts in the
+   original logs, which the authors shared. Left: backward count against the logged forward
+   count, as in the original figure. Right: against the forward count with the previous
+   batch's backward count removed. Colours follow the original, from a tolerance of 1 (red)
+   to $10^{-5}$ (purple).}
+  {fig:chen3c}
+
+\textbf{Error norm.} One further difference between the two configurations was a candidate.
+VODE measures local error with a single weighted root-mean-square norm over the whole augmented
+state, which includes the adjoint of every parameter. \texttt{torchdiffeq} takes the maximum of
+a separate norm for the state, its adjoint and each parameter tensor, which is stricter at the
+same tolerance. We tested this on the convolutional field, with the adjoint at the forward
+tolerance of $10^{-5}$, recording in advance that a reduction below two times would refute it.
+A VODE-style norm reduces the ratio from 128 to 79, by 1.6 times, and the seminorm of
+\citet{kidger2021hey}, which leaves the parameter adjoints out of the norm, reduces it to 98.
+The explanation is refuted. Two of the three retrained fields pass both checks; the third
+narrowly fails the reconstruction check at this tolerance and is excluded, although its
+unchecked ratios fall by a similar factor. The gap between our ratio and the original's
+corrected value of about 0.8 therefore remains unexplained: neither the adjoint tolerance, nor
+the stiff-capable solvers we could run, nor the error norm accounts for it.
+
+The original's corrected value is reachable in a checked configuration. The lowest ratio
 we observe is 0.78. Reaching it requires solving the adjoint at a looser tolerance than the
 forward pass, and it occurs on the toy field with a low-order solver. The library default is to solve the adjoint at the forward tolerance, which is also the natural
 reading of the original setup. Under that setting the lowest ratio we observe anywhere is 5.96,
-and on the convolutional field used by the original it is 119. We therefore report claim 6 as not reproduced, with the qualification
+and on our convolutional field it is 119. We therefore report claim 6 as not reproduced, with the qualification
 that the quantity is a property of the configuration of the adjoint rather than of the adjoint
-method.
+method. 
 
 One limitation bounds this conclusion. We could not evaluate the solver used by the original.
 The implicit Adams method in \texttt{torchdiffeq} is fixed-step, so its evaluation count is set
 by the step count rather than by stiffness, and the adaptive stiff-capable alternatives do not
-complete on the convolutional field. We can therefore state that the gap is dominated by the
-adjoint tolerance and is not removed by a stiff-capable solver. We cannot state how the exact
-configuration of the original would behave.
+complete on the convolutional field. We can therefore state that, within our configuration, the ratio is dominated by the adjoint
+tolerance and is not reduced by the stiff-capable solvers we could run. The original's logs now
+give its value in its own configuration, about 0.8, but we have not run VODE on our fields.
 
 \resfig{../figures/c2_diagnosis/c2_diagnosis.png}
   {Claim 6. Backward over forward NFE against forward tolerance, on the toy field (left) and
@@ -635,14 +699,61 @@ models.
         0.6 and 2.2 points \\
     5 & partial & error and time-NFE relations hold. The monotone cost condition is violated
         at tolerances where the solver is not integrating \\
-    6 & not reproduced & 123 against the reported 0.5, dominated by the tolerance at which the
-        adjoint is solved rather than by the solver family \\
+    6 & not reproduced & 123 against the original's corrected value of about 0.8
+        (reported as 0.5) \\
     7 & reproduced & NFE 384 to 738 over six epochs, and the checked tolerance tightens during
         training \\
     8 & reproduced & $+0.0007$ against $+31.8$ MB per function evaluation \\
     \bottomrule
   \end{tabularx}
 \end{table}
+
+\subsection{What we withdrew}
+\label{sec:withdrawn}
+
+Several conclusions were recorded during this work and later withdrawn. We list them because
+the record of what failed a check is part of the evidence for what passed one.
+Table~\ref{tab:withdrawn} gives each in the order it happened.
+
+\begin{table}[h]
+  \centering
+  \small
+  \caption{Conclusions withdrawn during this work, in order, and what replaced them.}
+  \label{tab:withdrawn}
+  \begin{tabularx}{\linewidth}{@{}XXX@{}}
+    \toprule
+    First recorded & Why it was withdrawn & What replaced it \\
+    \midrule
+    The Neural ODE does not fail on the toy task, and its NFE stays flat at about 44 &
+      Measured at $10^{-3}$, where the flow is not integrated. Reconstruction error was about
+      0.9 on data of radius about 1, and a linear probe on the terminal state fell to chance &
+      Re-measured at $10^{-6}$: NODE cost grows with training, as the original reports (claim 2) \\
+    Backward NFE is about equal to forward NFE (claim 6) &
+      The value came from a loose tolerance. Tightening it moved the ratio from 25 to 115 &
+      No single ratio exists. Claim 6 is reported as not reproduced, with a diagnosis \\
+    On MNIST the augmented model is 1.7 times cheaper in NFE (claim 4) &
+      Measured at $10^{-5}$, where three of five Neural ODE seeds fail the check &
+      2.10 at $10^{-7}$ in a retrain, 1.91 in the reported run \\
+    The Neural ODE cannot represent the crossing map (claim 1) &
+      Measured at $10^{-3}$, where most models fail the check. The conclusion was not
+      established there, although the numbers did not move &
+      Re-measured on a ladder to $10^{-9}$ at the original settings. It holds at $10^{-7}$ \\
+    Adjoint memory is constant in depth (claim 8) &
+      We varied the depth of a discrete baseline, which tests a different quantity &
+      Hold the ODE-Net fixed and raise its own NFE \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+The corrections did not all run in one direction. Withdrawing the flat NFE made the original
+result reproduce, and re-measuring the MNIST cost ratio enlarged the advantage of the augmented
+model. Withdrawing the equal-cost ratio took away what had looked like a clean headline, and
+left a claim we do not reproduce. We did not choose among them by outcome. Each was decided by a
+check, and four of the five by the same one: whether the solver had tracked the flow.
+
+Smaller errors in our own documentation were corrected in the same way. An earlier deviation
+register gave the removed wedge as $[0,\pi/13]$, which appears nowhere in the original, and
+reported medians as means. Neither changed a result.
 
 \subsection{What was easy}
 
@@ -658,14 +769,15 @@ two-dimensional programme, including a 300-run extension, runs in a few CPU-hour
 Solver tolerance was the main obstacle, and it is difficult because nothing fails. The
 integrator returns a state, the counter returns a number, and only an explicit check shows that
 the flow was not tracked. We added the reconstruction check after reviewing a set of results
-that looked unusually clean. It invalidated several conclusions we had already recorded,
-including a factorial experiment whose result was an artefact of a non-integrating tolerance,
-and our own first measurement of the backward to forward cost ratio. A tolerance should be treated
+that looked unusually clean. It invalidated several conclusions we had already recorded, listed in
+Section~\ref{sec:withdrawn}. A tolerance should be treated
 as unverified until checked, whether it is a library default or the value an original paper
 used, and it should be rechecked as training proceeds.
 
 Three further difficulties arose. Epoch budgets are not stated for the image
-experiments in the original, so our undershoot on two accuracies cannot be attributed cleanly.
+experiments in the original, so our undershoot on two accuracies could not be attributed cleanly. A longer run points to the
+budget for the MNIST Neural ODE but could not confirm it, because its fields stiffen beyond our
+tolerance ladder.
 High-accuracy references are expensive on trained fields, for the stiffness reason quantified
 under claim 5, which limits how tightly the error axis of a solver experiment can be pinned.
 The metrics of the generalisation experiment are skewed across seeds, since most Neural ODE
@@ -684,12 +796,17 @@ Claim 6 is the one we report as not reproduced. Before attributing the differenc
 Section~\ref{sec:claim6} tests three explanations against thresholds recorded in advance and
 identifies the coupling between the adjoint and forward tolerances as the dominant one.
 
-Two questions remain that only the original authors can answer. The first is the tolerance at
-which the reverse solve of Figure 3c was run relative to the forward pass. The second is
-whether the backward NFE reported there counts evaluations of the vector field or steps of the
-augmented adjoint system. We have written to them with both questions.
-% TODO before submission: the letter to Chen et al. has been sent. Add the outcome here. If
-% they reply, summarise the answer and correct the result if they correct us.
+Two questions remained that only the original authors could answer: the tolerance at which the
+reverse solve of Figure~3c was run relative to the forward pass, and whether its backward count
+covers evaluations of the vector field or steps of the augmented adjoint system. We wrote to
+them on 10 September 2026. David Duvenaud and Ricky Chen replied on 11 September and shared the original code
+and logs for Figure~3, which are not public. We read them only after our own experiments for
+this claim had finished, and used them only to answer these questions; none of our code derives
+from them. The reverse solve ran at the forward tolerance, and the backward count is the number
+of evaluations of the augmented system. The logs also showed the counting artefact described in Section~\ref{sec:claim6}. We sent
+them our analysis, and they agreed with it and plan to update their paper. We are grateful for
+their openness in sharing unreleased code, without which this correction would not have been
+possible.
 
 \section{Conclusion}
 
@@ -705,8 +822,8 @@ taken from Chen et al., three reproduce and one does not.
 The results that proved fragile are those about cost. Cost is a property of the solver as much
 as of the model. An adaptive solver at too loose a tolerance returns an answer and an evaluation
 count, and reports nothing about whether it tracked the flow. The field of a trained Neural ODE
-also stiffens during training, so a tolerance fixed at the start stops being adequate. Every
-conclusion we withdrew during this work follows from this, as does the one claim we do not
+also stiffens during training, so a tolerance fixed at the start stops being adequate. Most of
+the conclusions we withdrew during this work follow from this, as does the one claim we do not
 reproduce. We suggest four practices for measuring these models:
 
 \begin{itemize}
@@ -724,16 +841,22 @@ check that the differential equation was solved.
 
 The implementation, the per-seed result files behind every number in this article, and the
 scripts that produce every figure are available at
-\url{https://github.com/VanniLeonardo/re-augmented-neural-odes}. The per-seed files are the committed
+\begin{center}\url{https://github.com/VanniLeonardo/re-augmented-neural-odes}\end{center}
+The per-seed files are the committed
 artifact and the figures are not. One command rebuilds all figures from those files in about
 two minutes without a GPU, and prints with each one the condition recorded in advance for the
 claim it supports. A continuous-integration workflow builds the pinned container from scratch
 and runs that path on every commit. MNIST and CIFAR-10 are fetched from their original sources
 at run time and are not redistributed.
 
+\section*{Author contributions}
+
+All authors contributed equally to this work. Authors are listed in alphabetical order
+of surname, and the order does not reflect the size of each contribution.
+
 \section*{Acknowledgements}
 
 This replication grew out of a course project at Bocconi University, and the GPU experiments
 ran on the university high-performance computing cluster. We thank the authors of both original
-papers for work specified precisely enough to be checked, and for releasing implementations
-that we deliberately did not read.
+papers for work specified precisely enough to be checked, and David Duvenaud and Ricky Chen for answering our questions about
+claim 6 and sharing the code behind it.

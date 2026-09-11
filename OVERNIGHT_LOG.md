@@ -959,3 +959,154 @@ The re-run reproduced all 60 rows from 1e-3 to 1e-7 exactly, so the extension st
 - Not refuted. No stop condition: the NODE sits at the Proposition 1 floor, never below it.
 - At 1e-3, the tolerance Dupont specifies, 11 of 15 models fail the check, the worst with a
   relative reconstruction error of 25.
+
+## [9] D3 NODE LONG RUN — PRE-DECLARED (2026-09-11, written before the run)
+
+Question: is the MNIST Neural ODE undershoot (94.16 ± 0.44 against Dupont's 96.4 ± 0.5) an
+artefact of our 8-epoch budget? At epoch 8 the NODE's training accuracy is 94.3% (ANODE 98.6%)
+and its test accuracy is still rising in both committed runs, while ANODE's is flat.
+
+Setup: `scripts/run_d3_anode_mnist.py` exactly as for `d3` (NODE, 92 filters, batch 256,
+Adam 1e-3, train tol 1e-3, ladder 1e-3/1e-5/1e-6/1e-7), with only the epoch count changed, to
+20. No learning-rate schedule, so that one variable moves. Seeds 0, 1, 2, RTX 3090,
+`results/d3_long/`.
+
+Metric: mean test accuracy over the three seeds at epoch 20, re-measured at the loosest ladder
+tolerance at which all three seeds pass the reconstruction check.
+
+- SUPPORTED if >= 95.9 (within one of Dupont's standard deviations of 96.4), and training
+  accuracy at epoch 20 exceeds 94.3.
+- REFUTED if <= 94.7 (within 0.5 pp of the 8-epoch value: 2.5 times the budget buys nothing).
+- PARTIAL otherwise. Report the fraction of the 2.2-point gap that closes.
+- Sanity check: epoch-8 test accuracy at the training tolerance must lie in 94.2 ± 1.0, the range
+  of both committed runs. If not, the run is not comparable and is recorded as data only.
+
+Three seeds, not five: this tests the hypothesis and does not replace the Table 1 number, which
+stays the 8-epoch, 5-seed value.
+
+## [10] CHEN FIG. 3c: THE ORIGINAL CODE AND LOGS (2026-09-11)
+
+An analysis, not an experiment, and not pre-declared: the reading below came from the code and
+was then tested against the logs. David Duvenaud and Ricky Chen replied on 11 September to our letter of
+10 September and sent the code and logs behind Chen et al. Fig. 3 (`rtqichen/ode-nets`,
+private, not redistributed). Read after every model here was written and every claim-6
+experiment had finished.
+
+What the code shows:
+- Fig. 3 comes from `model_plots/create_plots.py` over the output of `check_model.py`: a small
+  MNIST ODE-Net (one ODE block, group norm, time-dependent), checkpoint at epoch 120, 101 test
+  batches of 10, tolerances 1e-5 to 1e0.
+- Solver: SciPy's VODE, implicit Adams (`src/integrate.py`). The reverse system is solved by the
+  same call with the same `atol`/`rtol`, so the adjoint runs at the forward tolerance, as in our
+  default. The patched autograd module that printed the backward count is not in the package;
+  `src/integrate.py` is its closest available form (stock autograd 1.2 has no `odeint`).
+- Backward count: evaluations of the augmented system, one vector-field evaluation plus one VJP
+  each, as in torchdiffeq.
+- Counter: `check_model.py` logs the forward count, resets the shared counter, then runs the
+  backward pass, which increments it. Each later "forward" count therefore includes the previous
+  batch's backward count, plus the one evaluation the adjoint makes outside the reverse solve.
+  The first batch at each tolerance runs the forward twice.
+
+Test on `model_plots/nfe_logs` (`make chen-logs LOGS=...`, `scripts/chen_fig3c_audit.py`).
+L = logged "forward", B = backward, F = inferred true forward (L_0/2, then L_k - B_{k-1} - 1):
+
+| tol | r(L_k, B_{k-1}) | r(L_k, B_k) | F | B | B/F | B/L (as plotted) | sd L -> sd F |
+|---|---|---|---|---|---|---|---|
+| 1e-5 | 0.77 | 0.25 | 64 | 50 | 0.79 | 0.44 | 7.57 -> 4.85 |
+| 1e-4 | 0.61 | 0.26 | 32 | 26 | 0.81 | 0.44 | 3.77 -> 3.01 |
+| 1e-3 | 0.56 | 0.29 | 20 | 15 | 0.78 | 0.43 | 1.82 -> 1.51 |
+| 1e-2 | 0.10 | 0.05 | 11 | 9 | 0.82 | 0.43 | 1.40 -> 1.40 |
+| 1e-1 | — | — | 7 | 6 | 0.86 | 0.43 | 1.02 -> 1.02 |
+| 1e0 | — | — | 6 | 6 | 1.00 | 0.46 | 0 -> 0 |
+
+- Each logged forward count tracks the previous batch's backward count, not its own.
+- Exact where counts are constant: at 1e0 every backward is 6, the first batch logs 12 = 2 x 6
+  and every other logs 13 = 6 + 6 + 1.
+- The plotted ratio, B/(F + B + 1), is 0.43 to 0.46: the "about half". The original's own
+  backward/forward ratio is 0.78 to 0.86 from 1e-5 to 1e-1, and 1.00 at 1e0.
+
+Consequences for claim 6: the target is about 0.8, not 0.5, and our coupled configuration still
+does not reach it (lowest 5.96 anywhere, 119 to 123 on the convolutional field). The adjoint
+tolerance cannot explain the gap to the original, which also solved the adjoint at the forward
+tolerance. What differs is the solver and its error norm: torchdiffeq's default adjoint norm is
+the maximum over (t, y, adj_y, each parameter tensor) of a per-group RMS; VODE takes one weighted
+RMS over the whole augmented state, parameter adjoints included, which is looser at the same
+tolerance.
+
+## [11] C2 ADJOINT ERROR NORM — PRE-DECLARED (2026-09-11, written before the run)
+
+Question: does the error norm of the reverse solve explain the gap between our ratio on the
+convolutional field (123, dopri5, 1e-5, adjoint at the forward tolerance) and the original's
+corrected ratio of about 0.8 ([10])? The original also solved the adjoint at the forward
+tolerance, so tolerance is not the difference; the norm is the leading candidate.
+
+Setup: `scripts/run_c2_diagnosis.py --field mnist --seeds 0,1,2 --solvers dopri5 --tols 1e-5
+--adj_offsets 1 --batch 8 --ref_tol 1e-7 --adj_norms default,seminorm,flat`, the settings of the
+committed MNIST diagnosis. The adjoint stays at the forward tolerance. Three norms on the reverse
+solve: `default` (torchdiffeq: maximum over t, y, adj_y and each parameter tensor of a per-group
+RMS), `seminorm` (the same without the parameter adjoints), `flat` (one RMS over the whole scaled
+augmented state, as VODE does). Only cells passing the reconstruction and gradient checks count.
+Run alone on the GPU, after [9] finishes. `results/c2_norm/`.
+
+- SUPPORTED if `flat` reduces the median ratio over seeds by >= 5x against `default`.
+- REFUTED if the reduction is < 2x. PARTIAL in between.
+- Reported separately, no condition: whether `flat` reaches <= 2 (within 2.5x of the original's
+  0.8), and the `seminorm` ratio.
+- Sanity check: `default` must reproduce the committed MNIST dopri5 1e-5 median (123.25) within
+  10%, or the run is not comparable and is recorded as data only.
+
+Addendum to [11], written before the run: the committed MNIST diagnosis loaded C1 checkpoints
+(`results/c1/ckpt/`, gitignored) that are not on this machine, so the three fields are retrained
+here with the same seeds and settings (RTX 3090). The verdict compares the three norms on the same
+retrained fields, so it does not depend on those fields matching the committed ones. The sanity
+check against 123.25 shows whether they do; if it fails, the verdict still stands and the absolute
+ratios are reported as this run's, not as a reproduction of the committed ones.
+
+## [9] D3 NODE LONG RUN — RESULT (3 seeds, 20 epochs, RTX 3090, 141 min; `results/d3_long/`)
+
+- Sanity check passed: epoch-8 test accuracy at the training tolerance 94.63 (94.2 ± 1.0).
+- Pre-declared condition NOT EVALUABLE. At epoch 20 no ladder tolerance passes the reconstruction
+  check on all three seeds (1e-7: 1/3). Recorded as data, no verdict. The condition did not say
+  what to do if none passes, and no other metric is substituted for it.
+- Secondary, not pre-declared (`scripts/d3_long_report.py`): at the training tolerance the mean
+  test accuracy first reaches 95.9 at epoch 15 and peaks at 96.13 at epoch 17 (seeds 96.08,
+  96.00, 96.30), with training accuracy 96.50. Seed 1 then diverged (87.90 at epoch 19, training
+  accuracy 89.56 at epoch 20) and ended at 92.33; seeds 0 and 2 ended at 96.11 and 96.15.
+  Final-epoch accuracy moves by at most 0.33 pp across the ladder on every seed, checked or not.
+- Reading: consistent with under-training. With 2.5 times the budget all three seeds reached the
+  original's interval (96.4 ± 0.5) before one diverged. The pre-declared test could not confirm
+  it, because the fields stiffen past 1e-7. Without a learning-rate schedule the longer run is
+  also unstable (one divergence in three). Table 1 keeps the 8-epoch, 5-seed value.
+
+Process note on [11] (not a result): the first two launches ran on the CPU and were stopped
+before writing any row. Cause: `scripts/run_c2_diagnosis.py` set `CUDA_VISIBLE_DEVICES=""` at
+import unless the variable was already set, meant for the 2-D fields. The committed MNIST
+diagnosis ran under SLURM, which sets it, so this never showed; on a workstation `make c2` would
+have run the MNIST diagnosis on the CPU. Fixed in the harness: the device is now chosen by field,
+CPU for the 2-D fields and GPU for MNIST, which is the hardware the committed rows record.
+A third launch was stopped after 40 minutes, before saving anything: without the C1 checkpoints
+the harness trained the MNIST field at `--train_tol` (1e-6, the 2-D setting) instead of C1's
+1e-3, which is both far slower and a different field from the committed one, and it would have
+saved it under C1's cache name. Fixed in the harness with `--mnist_train_tol`, default 1e-3, so
+a retrained field matches C1 (5 epochs, batch 128, Adam 1e-3, tolerance 1e-3).
+
+## [11] C2 ADJOINT ERROR NORM — RESULT (MNIST field, dopri5, 1e-5, RTX 3090, 52 min; `results/c2_norm/`)
+
+`scripts/c2_norm_report.py`. 9 cells; 6 pass both checks (seeds 0 and 1). Seed 2's retrained
+field narrowly fails the reconstruction check at 1e-5 (0.0105 against 0.01) for every norm, since
+that check does not depend on the norm, and is excluded.
+
+| norm | seeds | forward NFE | backward NFE | ratio (median) |
+|---|---|---|---|---|
+| default | 2 | 107 | 13721 | 128.43 |
+| seminorm | 2 | 107 | 10535 | 98.30 |
+| flat (VODE-style) | 2 | 107 | 8504 | 79.45 |
+
+- Sanity check passed: default 128.43 against the committed 123.25, within 10%.
+- default/flat = 1.6x < 2: REFUTED. The error norm of the reverse solve does not explain the gap
+  to the original's corrected ratio of about 0.8. `flat` does not reach <= 2.
+- Excluded seed 2, unchecked: 137.3, 110.8, 89.7 (default/flat 1.5x), the same pattern.
+- Consequence: the gap between our ratio and the original's corrected 0.8 remains unexplained.
+  Tolerance (same in both), stiff-capable solvers ([6] H1) and the error norm are ruled out as
+  sufficient causes. The original's solver itself, VODE implicit Adams, was not run on our fields.
+- Peak memory 1.7 GB.

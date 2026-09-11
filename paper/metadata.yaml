@@ -1,6 +1,5 @@
 # ReScience C submission metadata.
-# Filled where the repository already determines the answer. The remaining TODOs
-# are the co-authors' ORCIDs and emails, and the Zenodo DOI for the tagged commit.
+# Filled where the repository already determines the answer.
 
 # Title of the article:
 #  - "[Re]" prefix = successful replication, "[¬Re]" = failed replication.
@@ -12,31 +11,31 @@ title: "[Re] Augmented Neural ODEs"
 
 # List of authors with name, orcid number, email and affiliation.
 # Affiliation "*" means contact author (required even for single-authored papers).
-# Authors are in alphabetical order by surname.
+# Authors are in alphabetical order by surname and contributed equally (see content.tex).
 authors:
   - name: Giuseppe Bassi
-    orcid:                       # TODO
-    email:                       # TODO
+    orcid: 0009-0009-5441-6128
+    email: giuseppe.bassi@princeton.edu
     affiliations: 1
 
   - name: Kabir Ben Nefla
-    orcid:                       # TODO
-    email:                       # TODO
+    orcid: 0009-0000-7466-3091
+    email: benneflakabir@gmail.com
     affiliations: 1
 
   - name: Gaia Grossi
-    orcid:                       # TODO
-    email:                       # TODO
+    orcid: 0009-0004-3192-1678
+    email: arteniagrossi@gmail.com
     affiliations: 1
 
   - name: Anna Notaro
-    orcid:                       # TODO
-    email:                       # TODO
+    orcid: 0009-0006-6412-2164
+    email: annalytonotaro@gmail.com
     affiliations: 1
 
   - name: Beatrice Porta
-    orcid:                       # TODO
-    email:                       # TODO
+    orcid: 0009-0005-7555-2621
+    email: beatrice.porta04@gmail.com
     affiliations: 1
 
   - name: Leonardo Vanni
@@ -55,12 +54,11 @@ affiliations:
 keywords: rescience c, python, pytorch, neural ordinary differential equations, augmented neural odes, torchdiffeq
 
 # Code URL and DOI/SWH (url is mandatory for replication, doi after acceptance).
-# The concept DOI is used rather than the DOI of one release, so that a later
-# release (for example to add the co-authors' ORCIDs) does not leave this stale.
-# The snapshot submitted is v1.0.0, 10.5281/zenodo.22704200.
+# Cite the concept DOI that Zenodo mints at the submission release, so that a later
+# release does not leave it stale. The earlier v1.0.0 record was withdrawn.
 code:
   - url: https://github.com/VanniLeonardo/re-augmented-neural-odes
-  - doi: 10.5281/zenodo.22704199   # concept DOI: always resolves to the newest release
+  - doi:      # TODO: concept DOI from the submission release
   - swh:
 
 # Data URL and DOI (optional if no data)
@@ -91,14 +89,15 @@ abstract: "We replicate Augmented Neural ODEs (Dupont et al., 2019), reimplement
            both geometries we tested. At matched parameter counts the augmented model is
            more accurate and cheaper on MNIST and CIFAR-10, although two of the four
            absolute accuracies fall short of the published values. Of the four supporting
-           claims, three reproduce; the claim that the backward pass costs about half the
-           forward pass in function evaluations does not, and we diagnose why. We attach an
+           claims, three reproduce. The fourth, that the backward pass costs about half the
+           forward pass in function evaluations, does not; with code shared by the original
+           authors we traced their value to a counting artefact, and the corrected value of
+           about 0.8 remains far from ours. We attach an
            invertibility check to every measurement, because an adaptive solver at too loose
            a tolerance returns a plausible trajectory and a plausible evaluation count while
            never tracking the flow, and the vector field of a Neural ODE stiffens as it
            trains. Several conclusions we reached during this work were retracted for that
-           reason, and the reported cost discrepancy is dominated by the tolerance at which
-           the adjoint system is solved rather than by the choice of solver."
+           reason."
 
 # Bibliography file (yours)
 bibliography: bibliography.bib

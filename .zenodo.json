@@ -3,11 +3,11 @@
   "title": "[Re] Augmented Neural ODEs: code and per-seed results",
   "description": "<p>Reimplementation and replication of <em>Augmented Neural ODEs</em> (Dupont, Doucet and Teh, NeurIPS 2019), together with four supporting claims about solver cost and adjoint memory from <em>Neural Ordinary Differential Equations</em> (Chen et al., NeurIPS 2018), written for ReScience C.</p><p>This archive holds the implementation, the per-seed result files behind every number in the article, and the scripts that rebuild every figure from them. Every measurement carries a reconstruction check, so no quantity is reported at a solver tolerance that does not integrate the flow.</p>",
   "creators": [
-    {"name": "Bassi, Giuseppe", "affiliation": "Bocconi University"},
-    {"name": "Ben Nefla, Kabir", "affiliation": "Bocconi University"},
-    {"name": "Grossi, Gaia", "affiliation": "Bocconi University"},
-    {"name": "Notaro, Anna", "affiliation": "Bocconi University"},
-    {"name": "Porta, Beatrice", "affiliation": "Bocconi University"},
+    {"name": "Bassi, Giuseppe", "affiliation": "Bocconi University", "orcid": "0009-0009-5441-6128"},
+    {"name": "Ben Nefla, Kabir", "affiliation": "Bocconi University", "orcid": "0009-0000-7466-3091"},
+    {"name": "Grossi, Gaia", "affiliation": "Bocconi University", "orcid": "0009-0004-3192-1678"},
+    {"name": "Notaro, Anna", "affiliation": "Bocconi University", "orcid": "0009-0006-6412-2164"},
+    {"name": "Porta, Beatrice", "affiliation": "Bocconi University", "orcid": "0009-0005-7555-2621"},
     {"name": "Vanni, Leonardo", "affiliation": "Bocconi University", "orcid": "0009-0003-1869-9286"}
   ],
   "keywords": ["rescience c", "replication", "neural ordinary differential equations",

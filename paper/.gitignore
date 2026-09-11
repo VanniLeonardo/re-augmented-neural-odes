@@ -14,3 +14,6 @@
 # article.pdf is the compiled paper. Sources are committed, outputs are not.
 metadata.tex
 article.pdf
+
+# Correspondence with the original authors is kept privately, outside the repository.
+correspondence.md

@@ -22,7 +22,7 @@ becomes a box naming the missing file, so the paper still compiles.
 
 ## Provenance of these files
 
-Everything except `metadata.yaml`, `content.tex`, `bibliography.bib`, `correspondence.md` and
+Everything except `metadata.yaml`, `content.tex`, `bibliography.bib` and
 this file comes from the official ReScience C template at
 <https://github.com/rescience/template>, commit `0978d0e` (2023-02-15). The template is
 GPL-3 or later, see `COPYING`. The bundled fonts carry their own licences in their
@@ -68,16 +68,15 @@ to `article.tex`. They account for about 8 MB of this directory. `metadata.tex` 
 
 | Item | Where |
 |---|---|
-| ORCIDs and emails for the five co-authors | `metadata.yaml` |
-| A release after the co-authors' ORCIDs land, so the archive matches the article | Zenodo, then nothing in the paper: the concept DOI covers it |
+| A GitHub release for submission, archived by Zenodo, and its concept DOI | `metadata.yaml` |
 | If the code moves to another repository, update `code: url:` to match the repository the DOI is minted from | `metadata.yaml` |
-| The outcome of writing to the original authors | `content.tex`, and the table in `correspondence.md` |
+| The outcome of writing to the original authors | `content.tex`; the correspondence itself is kept privately, not in the repository |
 
 ## Archived code
 
-The code is archived on Zenodo. `metadata.yaml` cites the concept DOI,
-10.5281/zenodo.22704199, which always resolves to the newest release. The snapshot
-submitted with this article is v1.0.0, 10.5281/zenodo.22704200.
+The code is archived on Zenodo from a GitHub release. The earlier v1.0.0 record was withdrawn.
+The submission release mints a new concept DOI, which goes in `metadata.yaml` (`code: doi:`)
+and always resolves to the newest release.
 
 Anything committed after a release is absent from that release. Publishing another GitHub
 release archives the new state and mints a new version DOI under the same concept DOI, so
