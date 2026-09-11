@@ -10,12 +10,10 @@ from __future__ import annotations
 import argparse
 import csv
 import signal
-import os
 import sys
 import time
 from pathlib import Path
 
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -34,7 +32,7 @@ from training.utils import set_seed
 FIELDS = ["spheres", "mnist"]
 FIELDS_HELP = "spheres (toy, CPU) or mnist (conv ODE-Net; reuses a C1 checkpoint if present)"
 
-FIELDS_OUT = ["field", "seed", "trained", "solver", "tol", "adjoint_tol", "adj_offset",
+FIELDS_OUT = ["field", "seed", "trained", "solver", "tol", "adjoint_tol", "adj_offset", "adj_norm",
               "fwd_nfe", "bwd_nfe", "ratio", "recon_rel", "recon_ok", "grad_reldiff",
               "grad_ok", "wall_s", "capped", "ref_tol", "hardware"]
 
@@ -76,7 +74,7 @@ def build_field(field: str, seed: int, epochs: int, train_tol: float, cfg, devic
 
     model = ConvODENet(in_channels=1, num_filters=cfg.filters, num_classes=10,
                        solver_type="dopri5").to(device)
-    model.ode_block.atol = model.ode_block.rtol = train_tol
+    model.ode_block.atol = model.ode_block.rtol = cfg.mnist_train_tol
     ckpt = Path(cfg.ckpt_dir) / f"c1_seed{seed}_f{cfg.filters}_e{cfg.mnist_epochs}.pt"
     if epochs and ckpt.exists():
         model.load_state_dict(torch.load(ckpt, map_location=device, weights_only=True))
@@ -125,11 +123,25 @@ def reference_grads(func, y0, t, ref_tol: float):
     raise RuntimeError("could not compute a reference gradient within memory")
 
 
+def _flat_norm(tensors):
+    """VODE-style error norm: one RMS over the whole scaled augmented state, parameter
+    adjoints included. torchdiffeq's default instead takes the maximum over groups."""
+    return torch.cat([x.reshape(-1) for x in tensors]).pow(2).mean().sqrt()
+
+
+ADJ_NORMS = {"default": None, "seminorm": "seminorm", "flat": _flat_norm}
+
+
+def _adjoint_options(options, adj_norm):
+    norm = ADJ_NORMS[adj_norm]
+    return options if norm is None else dict(options, norm=norm)
+
+
 class _CellTimeout(Exception):
     pass
 
 
-def one_cell(func, y0, t, spec, tol, adj_tol, ref_g, cfg) -> dict:
+def one_cell(func, y0, t, spec, tol, adj_tol, ref_g, cfg, adj_norm="default") -> dict:
     """A runaway cell is DATA (capped=1), not a hung job: one configuration reached
     ~5e5 function evaluations on the toy field, which on a conv field would run for
     hours. SIGALRM turns that into a recorded row."""
@@ -148,7 +160,7 @@ def one_cell(func, y0, t, spec, tol, adj_tol, ref_g, cfg) -> dict:
         y = y0.detach().clone().requires_grad_(True)
         out = odeint_adjoint(func, y, t, method=method, rtol=tol, atol=tol, options=options,
                              adjoint_rtol=adj_tol, adjoint_atol=adj_tol,
-                             adjoint_method=method, adjoint_options=options)
+                             adjoint_method=method, adjoint_options=_adjoint_options(options, adj_norm))
         fwd = func.nfe
         out[1].pow(2).sum().backward()
         bwd = func.nfe - fwd
@@ -186,12 +198,16 @@ def main() -> None:
     p.add_argument("--seeds", default="0,1,2,3,4")
     p.add_argument("--epochs", type=int, default=100, help="toy training epochs")
     p.add_argument("--mnist_epochs", type=int, default=5, help="matches the C1 checkpoints")
+    p.add_argument("--mnist_train_tol", type=float, default=1e-3,
+                   help="MNIST training tolerance; matches the C1 checkpoints (--train_tol is for the 2-D fields)")
     p.add_argument("--untrained", action="store_true",
                    help="also run an untrained control of the same field")
     p.add_argument("--solvers", default="dopri5,dopri8,bosh3,adaptive_heun,scipy:LSODA,scipy:BDF,scipy:RK45")
     p.add_argument("--tols", default="1e-3,1e-5,1e-7")
     p.add_argument("--adj_offsets", default="1,100",
                    help="adjoint tol = forward tol x offset (1 = same, 100 = looser)")
+    p.add_argument("--adj_norms", default="default",
+                   help="error norm(s) of the reverse solve: default, seminorm, flat (VODE-style)")
     p.add_argument("--train_tol", type=float, default=1e-6,
                    help="tolerance the field is TRAINED at -- fixed, and independent of the "
                         "evaluation ladder (training at the tightest evaluated tolerance is "
@@ -208,12 +224,15 @@ def main() -> None:
     p.add_argument("--tag", default="")
     cfg = p.parse_args()
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # The 2-D fields run on the CPU, faster and free of GPU contention; the MNIST field on the GPU.
+    device = torch.device("cuda" if cfg.field == "mnist" and torch.cuda.is_available() else "cpu")
     hardware = torch.cuda.get_device_name(0) if device.type == "cuda" else cpu_name()
     seeds = [int(s) for s in cfg.seeds.split(",") if s.strip()]
     solvers = [s for s in cfg.solvers.split(",") if s.strip()]
     tols = [float(x) for x in cfg.tols.split(",") if x.strip()]
     offsets = [float(x) for x in cfg.adj_offsets.split(",") if x.strip()]
+    norms = [x for x in cfg.adj_norms.split(",") if x.strip()]
+    assert all(n in ADJ_NORMS for n in norms), norms
     states = [True] + ([False] if cfg.untrained else [])
     t = torch.tensor([0.0, 1.0], device=device)
 
@@ -232,13 +251,13 @@ def main() -> None:
                   f"{ref_tol_used:.0e}", flush=True)
             for spec in solvers:
                 for tol in tols:
-                    for off in offsets:
-                        r = one_cell(func, y0, t, spec, tol, tol * off, ref_g, cfg)
+                    for off, norm in ((o, n) for o in offsets for n in norms):
+                        r = one_cell(func, y0, t, spec, tol, tol * off, ref_g, cfg, norm)
                         r.update({"field": cfg.field, "seed": seed, "trained": int(trained),
-                                  "adj_offset": off, "ref_tol": ref_tol_used,
+                                  "adj_offset": off, "adj_norm": norm, "ref_tol": ref_tol_used,
                                   "hardware": hardware})
                         rows.append(r)
-                        print(f"    {spec:12s} tol {tol:.0e} adj x{off:<5.0f} "
+                        print(f"    {spec:12s} tol {tol:.0e} adj x{off:<5.0f} {norm:8s} "
                               f"fwd {r['fwd_nfe']:6} bwd {r['bwd_nfe']:8} "
                               f"ratio {r['ratio']:8.2f} recon_ok {r['recon_ok']} "
                               f"grad_ok {r['grad_ok']}", flush=True)
