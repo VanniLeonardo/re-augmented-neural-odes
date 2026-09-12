@@ -288,8 +288,8 @@ Seeding fixes initialisation, data generation and shuffling, so a re-run reprodu
 numbers within the reported spread rather than bit for bit. Adaptive solvers and GPU kernel
 selection are not bit-reproducible across machines. Figures rebuilt from the committed result files carry exactly the same
 numbers, in the pinned container as on the host. The rendered images are not byte-identical
-across environments, because text layout and legend rendering differ between builds of the
-plotting stack; the values drawn do not. One toy experiment re-run two months later, on a different
+across environments. Text layout and legend rendering differ between builds of the plotting
+stack, while the values drawn do not. One toy experiment re-run two months later, on a different
 thread count, returned its held-out accuracies unchanged.
 
 \section{Results}
@@ -339,22 +339,20 @@ steepen to approximate a map it cannot represent.
 \subsubsection{Claim 2: cost growth with training budget}
 
 We swept the training budget from 25 to 1000 epochs and measured at a checked tolerance of
-$10^{-6}$. On the concentric spheres, the median forward NFE of the Neural ODE grows by a factor of \textbf{1.74}
-between 25 and 500 epochs, the range of the condition we recorded in advance, and that of the
-augmented model by \textbf{1.04}. At the original
+$10^{-6}$. On the concentric spheres, the median forward NFE of the Neural ODE grows by a factor of
+\textbf{1.74} between 25 and 500 epochs, the range of the condition we recorded in advance.
+That of the augmented model grows by \textbf{1.04}. At the original
 budget of 50 epochs, the Neural ODE needs \textbf{218} function evaluations against
 \textbf{170} for the augmented model. Both models classify the data almost perfectly at that
 budget, with dense accuracies of 0.996 and 1.000. The two models are therefore separated by
-the cost of the flow rather than by accuracy. The pattern repeats on the thinner circles geometry, with growth factors of 1.37 and 1.04. One
-of those fifty runs stopped at 271 of its 500 epochs under a wall-clock cap, and is included;
-without it the factor is 1.31.
+the cost of the flow rather than by accuracy. The pattern repeats on the thinner circles geometry, with growth factors of 1.37 and 1.04. One of those fifty runs stopped at 271 of its 500 epochs under a wall-clock cap. We include
+it, and without it the factor is 1.31.
 
 Three of sixty measurements fail the reconstruction check: one seed at a budget of 200, and
 another at 500 and 1000. Their flows become too stiff to integrate at $10^{-6}$, which makes
 them the most extreme instances of the effect under study. The factors above are medians over
-all five seeds. Restricted to the four seeds that pass the check at both ends of the sweep, the
-growth factor of the Neural ODE is 1.37, which by coincidence equals the value for the circles
-geometry above, so the effect holds without them.
+all five seeds. Restricted to the four seeds that pass the check at both ends of the sweep, the growth factor of the Neural ODE is 1.37, so the effect holds without them. That this
+equals the circles value above is a coincidence.
 
 \resfig{../figures/budget/nfe_vs_epoch.png}
   {Claim 2. Forward NFE against training budget on concentric spheres, at a checked tolerance.
@@ -381,8 +379,8 @@ The original demonstrates this claim with one wedge on one geometry. We swept th
 dimension $p \in \{0,1,2,3,5\}$, the wedge width $\{\pi/8, \pi/5, \pi/3\}$ and two geometries
 over ten seeds, giving 300 runs. Each run carries the same reconstruction check, and six fail
 it and are excluded. The five seeds of the headline run are among these ten, with identical
-values, so the cell that repeats it reads 0.744 rather than 0.619: two of the five added seeds
-are ones on which the Neural ODE generalises perfectly. The augmented model generalises better at every width, on both
+values. The cell that repeats it reads 0.744 rather than 0.619, because two of the five added
+seeds are ones on which the Neural ODE generalises perfectly. The augmented model generalises better at every width, on both
 geometries, and for every $p \ge 1$. No condition stated in advance was violated.
 
 The effect does not grow without limit. On the spheres, the advantage in held-out accuracy
@@ -427,8 +425,8 @@ trained under identical settings, matches. Seed noise does not explain it: the g
 five standard deviations and repeats across two runs on different hardware. Our hypothesis is
 that eight epochs under-train the Neural ODE but not the augmented model. At the final epoch
 the Neural ODE reaches a training accuracy of only 94.3\%, against 98.6\% for the augmented
-model, so it is underfitting rather than overfitting, and with parameter counts matched this
-points to optimisation rather than capacity. Its test accuracy also rises by 0.5 points over
+model, so it is underfitting rather than overfitting. With parameter counts matched, that points to
+optimisation rather than capacity. Its test accuracy also rises by 0.5 points over
 the last epoch in both runs, while the augmented model's is flat from the seventh epoch. The
 original states neither the epoch count nor the learning-rate schedule for these experiments,
 so a longer budget or a decaying schedule could close the gap for the Neural ODE alone.
@@ -438,8 +436,8 @@ run we required the epoch-20 accuracy, at a tolerance that passes the reconstruc
 all three seeds, to reach 95.9. That test could not be applied: by epoch 20 two of the three
 fields had stiffened beyond $10^{-7}$, the tightest tolerance on our ladder. The trajectories
 support the hypothesis without confirming it. At the training tolerance the mean test accuracy
-passes 95.9 at epoch 15 and peaks at 96.1 at epoch 17, with all three seeds between 96.0 and
-96.3, inside the original's interval, and training accuracy rises to 96.5. One seed then
+passes 95.9 at epoch 15 and peaks at 96.1 at epoch 17, with all three seeds between 96.0 and 96.3, inside the original's interval. Training accuracy
+rises to 96.5. One seed then
 diverged and ended at 92.3, while the other two ended at 96.1 and 96.2. Without a learning-rate
 schedule the longer run is unstable. We therefore attribute the undershoot to the training
 budget with moderate confidence, and keep the 8-epoch value in Table~\ref{tab:table1}. The conditions recorded before the run concerned the ordering, which holds.
@@ -555,14 +553,15 @@ of the 401{,}408-dimensional state, about 1.2 TiB, and \texttt{scipy:BDF} was no
 the same reason. The stiff-solver explanation is therefore refuted on the toy field and untested
 on the convolutional one.
 
-We later ran the original's own solver. \texttt{torchdiffeq} cannot drive VODE, so we wrote its
-adjoint directly, following the configuration of the code the authors shared: the augmented reverse system integrated
-backwards by VODE's implicit Adams method at the forward tolerance, with the field evaluated in
-\texttt{torch} and the gradients checked against direct backpropagation. On three convolutional fields retrained here with the
+We later ran the original's own solver. \texttt{torchdiffeq} cannot drive VODE, so we wrote its adjoint directly, following the configuration of the
+code the authors shared. The augmented reverse system is integrated backwards by VODE's implicit
+Adams method at the forward tolerance, with the field evaluated in \texttt{torch}. Its gradients
+are checked against direct backpropagation. On three convolutional fields retrained here with the
 configuration of the committed run it gives a median ratio of \textbf{108.9}, against 128.4 for
-\texttt{dopri5} measured on those same fields, and on the two-dimensional field \textbf{9.0}
-against 24.6. It is the more expensive solver in both directions, and it moves the ratio by a
-factor of 1.2 and 2.7 where the gap to the original is a factor of about 130. The solver family is not the explanation either.
+\texttt{dopri5} on those same fields. On the two-dimensional field it gives \textbf{9.0} against
+24.6. It is the more expensive solver in both directions. It moves the ratio by a factor of 1.2
+on the convolutional field and 2.7 on the toy one, where the gap to the original is a factor of
+about 130. The solver family is not the explanation either.
 At the looser tolerances of the original's figure its gradients fail our one-percent check on
 both fields, so that part of the range cannot be compared here.
 
@@ -583,13 +582,12 @@ backward cost still produces a large ratio. A ratio is a poor summary statistic 
 quantity, and the two counts are better reported separately.
 
 \textbf{The original measurement.} After our experiments for this claim had finished, the
-original authors shared the code and logs behind Figure~3 (Section~\ref{sec:communication}). The
-reverse system was solved with the implicit Adams method of SciPy's VODE at the same tolerance
-as the forward pass, as in our default configuration, and the backward count is the number of
-evaluations of the augmented system, as in ours. The forward counts plotted in Figure~3c,
-however, are not forward counts alone. The evaluation counter is reset after the forward count
-is recorded and the backward pass then increments it, so each recorded forward count also
-contains the previous batch's backward count, plus one evaluation that the adjoint makes
+original authors shared the code and logs behind Figure~3 (Section~\ref{sec:communication}). The reverse system was solved with the implicit Adams method of SciPy's VODE, at the same
+tolerance as the forward pass, as in our default configuration. The backward count is the number
+of evaluations of the augmented system, as in ours. The forward counts plotted in Figure~3c,
+however, are not forward counts alone. The evaluation counter is reset after the forward count is
+recorded, and the backward pass then increments it. Each recorded forward count therefore
+contains the previous batch's backward count as well, plus one evaluation that the adjoint makes
 outside the reverse solve. Where the counts are constant this accounts for every logged value
 exactly: at a tolerance of 1, every backward pass takes 6 evaluations and every recorded forward
 count after the first is $13 = 6 + 6 + 1$. Where they vary most, at the three tightest
@@ -600,9 +598,8 @@ forward count, plotted against their sum, appears as about one half
 and 1.00 at a tolerance of 1, where the counts are smallest.
 The original authors have reviewed this analysis and agree with it
 (D. Duvenaud, personal communication, 11 September 2026). The original took the ratio of one half as
-evidence that the adjoint is cheaper than backpropagating through the solver. At 0.8 that
-argument still holds for the original's configuration, by a smaller margin; in ours the
-reverse pass costs 13 to 123 times the forward pass.
+evidence that the adjoint is cheaper than backpropagating through the solver. At 0.8 that argument still holds for the original's configuration, by a smaller margin. In ours
+the reverse pass costs 13 to 123 times the forward pass.
 
 \resfig{../figures/chen_fig3c/fig3c_rebuilt.png}
   {Claim 6. Panel (c) of the original Figure 3, rebuilt from the per-batch counts in the
@@ -620,9 +617,9 @@ same tolerance. We tested this on the convolutional field, with the adjoint at t
 tolerance of $10^{-5}$, recording in advance that a reduction below two times would refute it.
 A VODE-style norm reduces the ratio from 128 to 79, by 1.6 times, and the seminorm of
 \citet{kidger2021hey}, which leaves the parameter adjoints out of the norm, reduces it to 98.
-The explanation is refuted. Two of the three retrained fields pass both checks; the third
-narrowly fails the reconstruction check at this tolerance and is excluded, although its
-unchecked ratios fall by a similar factor. The gap between our ratio and the original's
+The explanation is refuted. Two of the three retrained fields pass both checks. The third
+narrowly fails the reconstruction check at this tolerance and is excluded, although its unchecked
+ratios fall by a similar factor. The gap between our ratio and the original's
 corrected value of about 0.8 therefore remains unexplained: neither the adjoint tolerance,
 nor the solver, including the original's own, nor the error norm accounts for it.
 
@@ -634,9 +631,9 @@ and on our convolutional field it is 119. We therefore report claim 6 as not rep
 that the quantity is a property of the configuration of the adjoint rather than of the adjoint
 method. 
 
-One limitation bounds this conclusion, and it is now the field itself. Three named differences
-between the two configurations have been ruled out: the adjoint tolerance, which both couple to
-the forward tolerance; the solver, including the original's own; and the error norm. The
+One limitation bounds this conclusion, and it is now the field itself. Three named differences between the two configurations have been ruled out: the adjoint
+tolerance, the solver and the error norm. Both configurations couple the adjoint tolerance to the
+forward tolerance, and the solver we ran is the original's own. The
 original's network is smaller, group-normalised and trained for 120 epochs at a tolerance of
 $10^{-2}$, while ours trains for five epochs at $10^{-3}$. A reverse pass costing about a
 hundred times the forward therefore looks like a property of the trained field rather than of
@@ -657,8 +654,8 @@ every seed and epoch, the forward NFE grows from \textbf{384 to 738} over six ep
 holds in all five seeds, so the claim reproduces.
 
 The behaviour of the tolerance is more informative than the NFE itself. Over the same six
-epochs, the fraction of seeds passing the check at $10^{-5}$ falls from 1.0 in the first three
-epochs to between 0.4 and 0.6 in the last three, while $10^{-6}$ and $10^{-7}$ continue to pass.
+epochs, the fraction of seeds passing the check at $10^{-5}$ falls from 1.0 in the first three epochs to between 0.4 and 0.6 in the last three. At
+$10^{-6}$ and $10^{-7}$ every seed continues to pass.
 The loosest tolerance that passes on every seed tightens from $10^{-5}$ to $10^{-6}$ at the
 fourth epoch. The field does not only become more expensive to
 integrate. It becomes harder to integrate at a fixed tolerance. This is the mechanism behind
@@ -824,16 +821,17 @@ and resumes from completed ones.
 \subsection{Communication with the original authors}
 \label{sec:communication}
 
-Claim 6 is the one we report as not reproduced. Before attributing the difference to the original, we measured its cause. The diagnosis of claim 6 tests three explanations against thresholds recorded in advance and
+Claim 6 is the one we report as not reproduced. Before attributing the difference to the original, we measured its cause. The diagnosis tests three explanations against thresholds recorded in advance, and
 identifies the coupling between the adjoint and forward tolerances as the dominant one.
 
-Two questions remained that only the original authors could answer: the tolerance at which the
-reverse solve of Figure~3c was run relative to the forward pass, and whether its backward count
-covers evaluations of the vector field or steps of the augmented adjoint system. We wrote to
+Two questions remained that only the original authors could answer. The first is the tolerance
+at which the reverse solve of Figure~3c was run, relative to the forward pass. The second is
+whether its backward count covers evaluations of the vector field or steps of the augmented
+adjoint system. We wrote to
 them on 10 September 2026. David Duvenaud and Ricky Chen replied on 11 September and shared the original code
-and logs for Figure~3, which are not public. We read them after the diagnosis of claim 6 was
-complete; the two experiments that follow it, on the error norm and on the original's solver,
-were designed in response to what the code showed. No model or training code here derives from
+and logs for Figure~3, which are not public. We read them after the diagnosis of claim 6 was complete. The two
+experiments that follow it, on the error norm and on the original's solver, were designed in
+response to what the code showed. No model or training code here derives from
 theirs. One diagnostic script does follow the adjoint in their integrator, so that claim 6 can
 be measured in the original's configuration, and \texttt{PROVENANCE.md} records it. The reverse solve ran at the forward tolerance, and the backward count is the number
 of evaluations of the augmented system. The logs also showed the counting artefact described under claim 6. We sent

@@ -91,13 +91,12 @@ abstract: "We replicate Augmented Neural ODEs (Dupont et al., 2019), reimplement
            absolute accuracies fall short of the published values. Of the four supporting
            claims, two reproduce, one reproduces partially, and one does not: the claim that
            the backward pass costs about half the forward pass in function evaluations. With
-           code shared by the original authors we traced their value to a counting artefact,
-           and the corrected value of about 0.8 remains far from ours, a
-           difference we could not attribute to the tolerance, the error norm or the solver. We attach an
-           invertibility check to every measurement, because an adaptive solver at too loose
-           a tolerance returns a plausible trajectory and a plausible evaluation count while
-           never tracking the flow, and the vector field of a Neural ODE stiffens as it
-           trains. Several conclusions we reached during this work were retracted for that
+           code shared by the original authors we traced their value to a counting artefact.
+           The corrected value of about 0.8 remains far from ours, a difference we could not
+           attribute to the tolerance, the error norm or the solver. We attach an invertibility check to every measurement. An adaptive solver at
+           too loose a tolerance returns a plausible trajectory and a plausible evaluation
+           count while never tracking the flow, and the vector field of a Neural ODE stiffens
+           as it trains. Several conclusions we reached during this work were retracted for that
            reason."
 
 # Bibliography file (yours)
