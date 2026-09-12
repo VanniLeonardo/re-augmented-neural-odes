@@ -7,7 +7,8 @@
 #   is small and portable; GPU experiments use the conda env / requirements.txt.
 # - wandb is deliberately NOT installed: logging defaults to the CSV backend, which
 #   proves the code never needs an external account.
-# - The only network access smoke needs at runtime is the MNIST dataset download.
+# - `make smoke` needs no network: it uses generated two-dimensional data and the committed
+#   results. Only the image experiments download MNIST and CIFAR-10, at run time.
 FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1 \

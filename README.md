@@ -22,6 +22,10 @@ make smoke       # end-to-end pipeline check             (~4 min, CPU, no accoun
 make figures     # every figure, from the committed data (~2 min, CPU)
 ```
 
+For the shortest from-scratch reproduction of a result in the paper, run
+`make d8 && make fig-d8` (~10 min, CPU). It trains the one-dimensional crossing flow at the
+original's own settings and reports claim 1 from the run it has just done.
+
 `make figures` is the command to start with. The per-seed CSV files under `results/` are the
 committed artifact, and the figures are not. Every figure in the paper is rebuilt from those
 files without a GPU, without training and without network access. Each target also prints
@@ -84,7 +88,7 @@ paper. Raw numbers and the condition recorded before each run are in
 | ID | Claim | Result | Figure |
 |---|---|---|---|
 | `d8` | A 1-D Neural ODE flow preserves order and cannot represent the crossing map (Prop. 1, Fig. 3) | Reproduced, at Dupont's d=1 settings. At 1e-7, where every arm passes on the remaining seeds: NODE MSE **1.0001**, ANODE-p1 and ANODE-p5 **0.0000**. The NODE sits at the theoretical floor of 1.0 rather than below it. One NODE seed fails the check at every tolerance down to 1e-9 and is reported separately. Its MSE is 1.0000. | `make fig-d8` |
-| `d1` | NODE cost grows with the training budget, ANODE stays flat (§4.2, Fig. 6) | Reproduced on both geometries. Spheres at 50 epochs, median over seeds: NODE 218 NFE against ANODE 170. Growth ×1.74 against ×1.04 over 25 to 500 epochs, or ×1.37 on the four seeds that pass the check at both ends. | `make fig-d1` |
+| `d1` | NODE cost grows with the training budget, ANODE stays flat (§4.2, Fig. 6) | Reproduced on both geometries. Spheres at 50 epochs, median over seeds: NODE 218 NFE against ANODE 170. Growth ×1.37 against ×1.04 over 25 to 500 epochs, on the four seeds that pass the check at both ends, and ×1.74 over all five. | `make fig-d1` |
 | `d2` | NODE generalises poorly across an unobserved angular wedge (§5.1, Fig. 9) | Reproduced. Held-out accuracy, median over 5 seeds: NODE **0.619** against ANODE **1.000**, loss 6.089 against 0.000. The NODE seeds spread widely (IQR 0.613 to 0.921), and one scores 1.000. The wedge `[0, π/5]` was verified against the paper text. | `make fig-d2` |
 | `d3` | Matched-parameter ANODE beats NODE on MNIST and is cheaper (Table 1) | Reproduced, partial on the NODE number. At 1e-7, where both pass in every run: ANODE **98.05 ± 0.20** against 98.2 ± 0.1, NODE **94.16 ± 0.44** against 96.4 ± 0.5. The NODE undershoot of about 2.2 points is consistent across two runs. Trained for 20 epochs, all three seeds of a check run reach 96.0 to 96.3 by epoch 17, inside the original's interval, though one then diverges and the pre-declared check could not be applied, because the fields stiffen past 1e-7 (`make fig-d3`). ANODE is 1.91 times cheaper in NFE, and 2.10 in an independent retrain. | `make fig-d3` |
 | `d4` | The same on CIFAR-10 (Table 1) | Reproduced, partial on the ANODE number. At 1e-6, where both pass in every run: NODE **53.70 ± 0.83** against 53.7 ± 0.2, ANODE **60.04 ± 0.94** against 60.6 ± 0.4. An earlier run on other hardware gave 59.34, so the shortfall is smaller than our run-to-run spread. ANODE is 1.26 to 1.32 times cheaper in NFE. | `make fig-d4` |

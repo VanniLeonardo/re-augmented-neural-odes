@@ -58,6 +58,18 @@ reproduces partially, because a condition stated in advance is violated at toler
 solver is not integrating, and one does not reproduce. We do not attempt the benchmark table of Chen
 et al.
 
+Two earlier reports examined the same paper for the NeurIPS 2019 Reproducibility Challenge.
+\citet{lehnert2019reproducibility} reproduced most of its results using the authors' released
+implementation, and added ablations with fixed-step solvers. \citet{ho2019reproducibility}
+reimplemented the image models and recovered the ordering of the two, at accuracies about one
+point below the original on MNIST and about eight below on CIFAR-10, without accounting for the
+difference. Both reports were rejected by the challenge and remain unpublished. This replication
+asks different questions. The first is whether the published description alone suffices, without
+reference to the authors' code. The second is whether the reported measurements survive a check
+that the solver integrated the flow. The third is whether the four claims of Chen et al.\ on
+which the argument rests hold as well. Where our own accuracies fall short, we say by how much
+and what we think explains it.
+
 \section{Scope of reproducibility}
 \label{sec:scope}
 
@@ -193,8 +205,9 @@ tolerance and record the relative reconstruction error
 \]
 A measurement passes the check when $\varepsilon_{\text{recon}} < 10^{-2}$. We call such a
 tolerance a checked tolerance. The check is a necessary condition rather than a sufficient
-one. It detects a solver that is not tracking
-the flow, and it is cheap enough to run on every measurement.
+one. It screens for a gross failure to track
+the flow, and it is cheap enough to run on every measurement. A flow that does not return to its
+starting point has not been integrated. One that does return may still be inaccurate.
 
 Two reporting rules follow. First, a quantity compared between two models is quoted at the loosest tolerance at which both
 models pass the check on every seed. This prevents either model from being favoured by a
@@ -204,6 +217,13 @@ experiment was run more than once, a tolerance counts as checked only if it pass
 run, since separate runs train separate fields. The toy experiments of claims 2 and 3 were
 evaluated at a single tolerance, $10^{-6}$, so for them the first rule reduces to checking that
 tolerance.
+
+The threshold was fixed before the confirmatory runs, at the same one per cent we require of
+agreement between adjoint and direct gradients. The outcomes do not depend on its exact value.
+Recomputed at $3\times10^{-3}$ and at $3\times10^{-2}$, every claim keeps its verdict. What
+moves is which rung of the ladder a number is quoted at, and how many measurements are excluded.
+The extension excludes 25, 6 and 2 of its 300 runs at the three thresholds, and the augmented
+model leads the Neural ODE in every cell of the sweep in all three cases.
 
 The consequences are visible in the results below. At $10^{-3}$, the tolerance the original
 papers specify, the one-dimensional experiment of claim 1 fails the check for 11 of its 15
@@ -340,19 +360,21 @@ steepen to approximate a map it cannot represent.
 
 We swept the training budget from 25 to 1000 epochs and measured at a checked tolerance of
 $10^{-6}$. On the concentric spheres, the median forward NFE of the Neural ODE grows by a factor of
-\textbf{1.74} between 25 and 500 epochs, the range of the condition we recorded in advance.
-That of the augmented model grows by \textbf{1.04}. At the original
+\textbf{1.37} between 25 and 500 epochs, over the four seeds that pass the reconstruction check
+at both ends. That range of budgets is the one the condition we recorded in advance names. That of the augmented model
+grows by \textbf{1.04}, over all five. At the original
 budget of 50 epochs, the Neural ODE needs \textbf{218} function evaluations against
 \textbf{170} for the augmented model. Both models classify the data almost perfectly at that
 budget, with dense accuracies of 0.996 and 1.000. The two models are therefore separated by
-the cost of the flow rather than by accuracy. The pattern repeats on the thinner circles geometry, with growth factors of 1.37 and 1.04. One of those fifty runs stopped at 271 of its 500 epochs under a wall-clock cap. We include
+the cost of the flow rather than by accuracy. The pattern repeats on the thinner circles geometry, with growth factors of 1.37 and 1.04. The
+first equals the spheres figure by coincidence. One of those fifty runs stopped at 271 of its 500 epochs under a wall-clock cap. We include
 it, and without it the factor is 1.31.
 
 Three of sixty measurements fail the reconstruction check: one seed at a budget of 200, and
 another at 500 and 1000. Their flows become too stiff to integrate at $10^{-6}$, which makes
-them the most extreme instances of the effect under study. The factors above are medians over
-all five seeds. Restricted to the four seeds that pass the check at both ends of the sweep, the growth factor of the Neural ODE is 1.37, so the effect holds without them. That this
-equals the circles value above is a coincidence.
+them the most extreme instances of the effect under study. Over all five seeds, including those three, the Neural ODE factor is
+1.74. We report that figure and do not let it carry the comparison, because a measurement that
+fails the check is evidence about the tolerance axis rather than about cost.
 
 \resfig{../figures/budget/nfe_vs_epoch.png}
   {Claim 2. Forward NFE against training budget on concentric spheres, at a checked tolerance.
@@ -704,15 +726,16 @@ claim, and neither is a clean success.
 The structural claims of the original paper are robust. They follow from the topology of a
 flow, they appeared immediately, and they survived every tolerance, geometry and seed we tried.
 In the one-dimensional case the model fails by exactly the margin the theory predicts. The
-claims about cost are the fragile ones. The reason lies in the solver rather than in the
-models.
+claims about cost are the fragile ones. The fragility arises from the interaction between the learned field
+and the solver.
 
 \begin{table}[h]
   \centering
   \small
   \caption{Outcome per claim and the evidence it rests on. Every quantity is quoted at a
            tolerance at which the reconstruction check passes, except the all-seed growth
-           factor of claim 2, which includes seeds that fail at the largest budgets.}
+           factor of claim 2, which is reported beside the checked one and includes seeds that
+           fail at the largest budgets.}
   \label{tab:summary}
   \begin{tabularx}{\linewidth}{@{}clX@{}}
     \toprule
@@ -720,8 +743,8 @@ models.
     \midrule
     1 & reproduced & Neural ODE at the predicted error floor, 1.0001 against 0.0000, on four of
         five seeds. The fifth is too stiff to check and also sits at the floor \\
-    2 & reproduced & NFE growth of $\times1.74$ against $\times1.04$ over the budget sweep,
-        $\times1.37$ on the seeds that pass at both ends \\
+    2 & reproduced & NFE growth of $\times1.37$ against $\times1.04$ on the seeds that
+        pass the check at both ends, and $\times1.74$ over all five \\
     3 & reproduced & held-out accuracy 0.619 against 1.000, extended over widths and
         geometries \\
     4 & partial & ordering reproduced on both datasets. Two of four accuracies fall short by
