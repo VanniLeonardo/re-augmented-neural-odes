@@ -68,7 +68,7 @@ to `article.tex`. They account for about 8 MB of this directory. `metadata.tex` 
 
 The code is archived on Zenodo from a GitHub release. `metadata.yaml` cites the concept DOI,
 10.5281/zenodo.22704199, which always resolves to the newest release. The snapshot submitted
-with this article is v1.0.0, 10.5281/zenodo.22725731.
+with this article is the v1.0.1 release, which that DOI currently resolves to.
 
 If the code ever moves to another repository, `code: url:` must match the repository the DOI is
 minted from.

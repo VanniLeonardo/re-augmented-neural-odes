@@ -55,7 +55,7 @@ keywords: rescience c, python, pytorch, neural ordinary differential equations, 
 
 # Code URL and DOI/SWH (url is mandatory for replication, doi after acceptance).
 # The concept DOI is cited rather than the DOI of one release, so that a later release
-# does not leave it stale. The snapshot submitted is v1.0.0, 10.5281/zenodo.22725731.
+# does not leave it stale. The snapshot submitted is the v1.0.1 release.
 code:
   - url: https://github.com/VanniLeonardo/re-augmented-neural-odes
   - doi: 10.5281/zenodo.22704199   # concept DOI: always resolves to the newest release
