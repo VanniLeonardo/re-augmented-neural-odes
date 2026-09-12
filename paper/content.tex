@@ -286,8 +286,10 @@ the claims tested here requires a large compute budget.
 
 Seeding fixes initialisation, data generation and shuffling, so a re-run reproduces our
 numbers within the reported spread rather than bit for bit. Adaptive solvers and GPU kernel
-selection are not bit-reproducible across machines. Figures rebuilt from the committed result
-files are exactly reproducible. One toy experiment re-run two months later, on a different
+selection are not bit-reproducible across machines. Figures rebuilt from the committed result files carry exactly the same
+numbers, in the pinned container as on the host. The rendered images are not byte-identical
+across environments, because text layout and legend rendering differ between builds of the
+plotting stack; the values drawn do not. One toy experiment re-run two months later, on a different
 thread count, returned its held-out accuracies unchanged.
 
 \section{Results}

@@ -178,9 +178,8 @@ faster on CPU and this avoids GPU contention.
 
 **Determinism.** Seeds fix initialisation, shuffling and data generation, so a re-run
 reproduces the reported numbers within the documented spread rather than bit for bit.
-Adaptive solvers and cuDNN kernel selection are not bit-reproducible across machines. Figures
-rebuilt from the committed files are deterministic: `results/c2/c2_surface.csv` regenerates
-byte for byte. CPU runs are more reproducible still. The extension re-ran the Figure 9 cells
+Adaptive solvers and cuDNN kernel selection are not bit-reproducible across machines. Figures rebuilt from the committed files are deterministic in what they contain: `results/c2/c2_surface.csv` regenerates
+byte for byte, and the report scripts print identical numbers in the container and on the host. The rendered PNGs are byte-identical only within one environment: text layout and legend rendering differ between builds of the plotting stack, while the values drawn do not. CPU runs are more reproducible still. The extension re-ran the Figure 9 cells
 two months later, single-threaded rather than multi-threaded, and matched the committed
 held-out accuracies exactly.
 
