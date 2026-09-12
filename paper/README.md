@@ -64,19 +64,14 @@ to `article.tex`. They account for about 8 MB of this directory. `metadata.tex` 
   condition recorded before a run was violated, and the backward against forward NFE claim
   does not reproduce.
 
-## Open items before submission
-
-| Item | Where |
-|---|---|
-| A GitHub release for submission, archived by Zenodo, and its concept DOI | `metadata.yaml` |
-| If the code moves to another repository, update `code: url:` to match the repository the DOI is minted from | `metadata.yaml` |
-| The outcome of writing to the original authors | `content.tex`; the correspondence itself is kept privately, not in the repository |
-
 ## Archived code
 
-The code is archived on Zenodo from a GitHub release. The earlier v1.0.0 record was withdrawn.
-The submission release mints a new concept DOI, which goes in `metadata.yaml` (`code: doi:`)
-and always resolves to the newest release.
+The code is archived on Zenodo from a GitHub release. `metadata.yaml` cites the concept DOI,
+10.5281/zenodo.22704199, which always resolves to the newest release. The snapshot submitted
+with this article is v1.0.0, 10.5281/zenodo.22725731.
+
+If the code ever moves to another repository, `code: url:` must match the repository the DOI is
+minted from.
 
 Anything committed after a release is absent from that release. Publishing another GitHub
 release archives the new state and mints a new version DOI under the same concept DOI, so
