@@ -293,6 +293,13 @@ The published article will be CC-BY-4.0. Details are in `LICENSE`.
 
 Copyright is held jointly by the six contributors listed in the git history.
 
+## Generative AI
+
+Generative AI tools were used during preparation of the manuscript and repository documentation
+for language editing, restructuring, and drafting assistance. All source code, experiments,
+analyses, scientific claims, and conclusions were produced and verified by the authors, who take
+full responsibility for the final text.
+
 ## Citation
 
 This is a replication. Cite the original work:
