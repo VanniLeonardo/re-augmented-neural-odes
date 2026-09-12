@@ -360,9 +360,9 @@ steepen to approximate a map it cannot represent.
 
 We swept the training budget from 25 to 1000 epochs and measured at a checked tolerance of
 $10^{-6}$. On the concentric spheres, the median forward NFE of the Neural ODE grows by a factor of
-\textbf{1.37} between 25 and 500 epochs, over the four seeds that pass the reconstruction check
-at both ends. That range of budgets is the one the condition we recorded in advance names. That of the augmented model
-grows by \textbf{1.04}, over all five. At the original
+\textbf{1.37} between 25 and 500 epochs, and that of the augmented model by \textbf{1.06}, both
+over the four seeds that pass the reconstruction check at both ends. That range of budgets is
+the one the condition we recorded in advance names. At the original
 budget of 50 epochs, the Neural ODE needs \textbf{218} function evaluations against
 \textbf{170} for the augmented model. Both models classify the data almost perfectly at that
 budget, with dense accuracies of 0.996 and 1.000. The two models are therefore separated by
@@ -372,8 +372,7 @@ it, and without it the factor is 1.31.
 
 Three of sixty measurements fail the reconstruction check: one seed at a budget of 200, and
 another at 500 and 1000. Their flows become too stiff to integrate at $10^{-6}$, which makes
-them the most extreme instances of the effect under study. Over all five seeds, including those three, the Neural ODE factor is
-1.74. We report that figure and do not let it carry the comparison, because a measurement that
+them the most extreme instances of the effect under study. Over all five seeds, including those three, the factors are 1.74 and 1.04. We report that figure and do not let it carry the comparison, because a measurement that
 fails the check is evidence about the tolerance axis rather than about cost.
 
 \resfig{../figures/budget/nfe_vs_epoch.png}
@@ -512,7 +511,7 @@ violated. The median NFE of \texttt{dopri5} falls from 26 to 20 between toleranc
 and $10^{-2}$. We report the violation as measured rather than restating the condition. Both
 of those measurements fail the reconstruction check on every seed, so the step sizes chosen
 there do not track the flow. Among measurements that pass the check, the cost is monotone.
-Cost therefore rises with tolerance wherever the solver is integrating, and behaves
+Cost therefore rises as the tolerance tightens wherever the solver is integrating, and behaves
 irregularly where it is not.
 
 Two further observations follow from this experiment. First, the cost of the reference grows by a factor of between 4.7 and 7.7 per decade of tolerance, where an eighth-order method on a non-stiff
@@ -743,8 +742,8 @@ and the solver.
     \midrule
     1 & reproduced & Neural ODE at the predicted error floor, 1.0001 against 0.0000, on four of
         five seeds. The fifth is too stiff to check and also sits at the floor \\
-    2 & reproduced & NFE growth of $\times1.37$ against $\times1.04$ on the seeds that
-        pass the check at both ends, and $\times1.74$ over all five \\
+    2 & reproduced & NFE growth of $\times1.37$ against $\times1.06$ on the seeds that
+        pass the check at both ends, and $\times1.74$ against $\times1.04$ over all five \\
     3 & reproduced & held-out accuracy 0.619 against 1.000, extended over widths and
         geometries \\
     4 & partial & ordering reproduced on both datasets. Two of four accuracies fall short by

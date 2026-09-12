@@ -76,11 +76,12 @@ def main() -> None:
               f"-> REFUTED if NODE grow<1.30 or ANODE grow>=1.30")
         passes = g[(g.model == "NODE") & g.budget.isin([25, 500])].groupby("seed").recon_ok.min()
         keep = passes[passes == 1].index
-        kept = g[(g.model == "NODE") & g.seed.isin(keep)]
-        grow_ok = (np.median(kept[kept.budget == 500].fwd_nfe_median)
-                   / np.median(kept[kept.budget == 25].fwd_nfe_median))
-        print(f"     NODE growth on the {len(keep)} seeds passing the check at 25 and 500: "
-              f"x{grow_ok:.2f}")
+        for m in ("NODE", "ANODE-p1"):
+            kept = g[(g.model == m) & g.seed.isin(keep)]
+            grow_ok = (np.median(kept[kept.budget == 500].fwd_nfe_median)
+                       / np.median(kept[kept.budget == 25].fwd_nfe_median))
+            print(f"     {m} growth on the {len(keep)} seeds where the NODE passes the check "
+                  f"at 25 and 500: x{grow_ok:.2f}")
         if "status" in g and (g.status != "ok").any():
             for _, r in g[g.status != "ok"].iterrows():
                 print(f"     [{r.status}] {r.model} seed {int(r.seed)} budget {int(r.budget)} "
