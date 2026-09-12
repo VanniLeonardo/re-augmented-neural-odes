@@ -343,8 +343,9 @@ augmented model by \textbf{1.04}. At the original
 budget of 50 epochs, the Neural ODE needs \textbf{218} function evaluations against
 \textbf{170} for the augmented model. Both models classify the data almost perfectly at that
 budget, with dense accuracies of 0.996 and 1.000. The two models are therefore separated by
-the cost of the flow rather than by accuracy. The pattern repeats on the thinner circles
-geometry, with growth factors of 1.37 and 1.04.
+the cost of the flow rather than by accuracy. The pattern repeats on the thinner circles geometry, with growth factors of 1.37 and 1.04. One
+of those fifty runs stopped at 271 of its 500 epochs under a wall-clock cap, and is included;
+without it the factor is 1.31.
 
 Three of sixty measurements fail the reconstruction check: one seed at a budget of 200, and
 another at 500 and 1000. Their flows become too stiff to integrate at $10^{-6}$, which makes

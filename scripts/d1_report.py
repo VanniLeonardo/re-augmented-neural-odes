@@ -81,6 +81,11 @@ def main() -> None:
                    / np.median(kept[kept.budget == 25].fwd_nfe_median))
         print(f"     NODE growth on the {len(keep)} seeds passing the check at 25 and 500: "
               f"x{grow_ok:.2f}")
+        if "status" in g and (g.status != "ok").any():
+            for _, r in g[g.status != "ok"].iterrows():
+                print(f"     [{r.status}] {r.model} seed {int(r.seed)} budget {int(r.budget)} "
+                      f"stopped at epoch {int(r.epochs_done)}, NFE {r.fwd_nfe_median:.0f}: "
+                      "included above, and reported as data")
         print(f"  R4 (ANODE>=NODE acc @50): NODE {node_acc:.4f} vs ANODE {an_acc:.4f} "
               f"-> REFUTED if ANODE<NODE beyond noise")
         print(f"  S1 STOP-check (NODE acc<=0.70 @>=50 => contradicts Dupont 'eventually approximates'): "

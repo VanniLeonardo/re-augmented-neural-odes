@@ -1217,3 +1217,8 @@ Also on [6]: of the 18 cells recorded as not completing, twelve are the convolut
 Jacobian of the 401,408-dimensional state -- and six reached a ten-minute cap on the toy field.
 `scipy:BDF` was never run on the convolutional field, so the stiff-solver explanation is refuted
 on the toy field and untested on the convolutional one. The article now says so.
+
+Also on [1]: the circles growth factor of 1.37 includes one run that stopped at 271 of its 500
+epochs under the per-seed wall-clock cap (NODE seed 2, `status=time_capped`, recon_ok=1, NFE 344
+against the cell median of 224). Without that row the factor is 1.31. `scripts/d1_report.py` now
+prints capped runs, and the article says so.
