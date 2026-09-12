@@ -502,6 +502,15 @@ uses 116 function evaluations and sits at the edge of the reconstruction check, 
 magnitude smaller. The tolerance is a request rather than a guarantee, and the reconstruction
 check is what makes measurements comparable.
 
+The reference itself is not exact, and we measured how inexact. On the same field its endpoint
+at $10^{-8}$ differs from its endpoint at $10^{-9}$ by a relative $6\times10^{-6}$. That is
+below a tenth of 95\% of the errors on this axis, and between 13\% and 22\% of the four
+tightest. The monotone fall of the error, which spans four orders of magnitude, is therefore
+unaffected, while the smallest errors we report carry a reference uncertainty of about a fifth
+of their value. Tightening the reference further is a matter of cost rather than difficulty:
+209{,}783 function evaluations at $10^{-8}$ against 1{,}033{,}060 at $10^{-9}$, a factor of 4.9
+per decade, in line with the growth reported above.
+
 This experiment also required the hardware recorded with each measurement. The five seeds were
 scheduled across two different GPU partition sizes, so the pooled wall-clock times mixed
 machines. Within each hardware group the correlation between time and NFE is between 0.991 and

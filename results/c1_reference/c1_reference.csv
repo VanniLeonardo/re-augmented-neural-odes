@@ -1,0 +1,2 @@
+seed,tol_loose,tol_tight,nfe_loose,nfe_tight,wall_loose_s,wall_tight_s,abs_diff,rel_diff,smallest_sweep_err,hardware
+0,1e-08,1e-09,209783,1033060,204.79,1034.81,0.033300306648015976,5.955936447255694e-06,2.678e-05,NVIDIA GeForce RTX 3090

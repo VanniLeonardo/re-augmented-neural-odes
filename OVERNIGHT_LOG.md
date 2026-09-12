@@ -1165,3 +1165,42 @@ not produce correct gradients on our fields. Two of five toy seeds also fail it 
   the field itself. The original's network is smaller, group-normalised and trained for 120
   epochs at a tolerance of 1e-2 (its `training_logs`), where ours trains for five epochs at 1e-3.
   Not tested, and not claimed: varying the architecture and the budget is a separate experiment.
+
+## [13] IS THE CLAIM-5 REFERENCE CONVERGED? — PRE-DECLARED (2026-09-12, written before the run)
+
+Question: claim 5 measures endpoint error against dopri8 at 1e-8. The same experiment measures
+the cost of that reference growing 5 to 7 times per decade on a trained field, so the reference
+could be the limit of the error axis rather than the solvers under test.
+
+Setup: `scripts/c1_reference_check.py`. The MNIST convolutional field from the cached C1
+checkpoint, seed 0, batch 32 (the sweep's evaluation batch). Endpoints from dopri8 at 1e-8 and at
+1e-9, compared in the norm the sweep uses: the largest per-sample difference, divided by the
+largest per-sample norm of the tighter endpoint. The checkpoint was trained on this machine with
+the C1 configuration (5 epochs, batch 128, Adam 1e-3, tolerance 1e-3), so this is a field
+equivalent to the cluster's, not the identical one.
+
+Yardstick: 2.678e-5, the smallest relative error the committed sweep reports (dopri8 at 1e-5).
+
+- ADEQUATE if the two references agree to within 10% of that, 2.7e-6.
+- REFERENCE-LIMITED if they differ by 2.678e-5 or more: the error axis would then be measuring
+  the reference, exactly the failure the reconstruction check exists to catch elsewhere.
+- PARTIAL in between.
+- The 1e-9 solve is projected at about half an hour. If it runs beyond an hour it is recorded as
+  data and the limitation is stated in the paper instead.
+
+## [13] IS THE CLAIM-5 REFERENCE CONVERGED? — RESULT (20 min; `results/c1_reference/`)
+
+| reference | NFE | wall |
+|---|---|---|
+| dopri8 @ 1e-8, the one claim 5 uses | 209,783 | 205 s |
+| dopri8 @ 1e-9 | 1,033,060 | 1035 s |
+
+- Relative difference between the two endpoints: **5.96e-6**, which is 22.3% of the smallest
+  error the sweep reports (2.678e-5), 13% to 18% of the next three, and under a tenth of 95% of
+  all measured errors. PARTIAL, as pre-declared (ADEQUATE needed <= 2.7e-6).
+- The reference is therefore good enough for the monotone-fall result, which spans four orders of
+  magnitude, and not good enough to pin the smallest errors to better than about a fifth.
+- The reference cost grows by 4.9 times per decade here (209,783 -> 1,033,060), independent
+  confirmation of the 5 to 7 times per decade the sweep reports, and the reason a tighter
+  reference was not used in the first place: 1e-10 projects to about five million evaluations.
+- Reported in the paper under claim 5 rather than left as an assumption.

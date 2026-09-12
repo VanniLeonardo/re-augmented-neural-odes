@@ -12,7 +12,7 @@ SMOKE_DIR := .smoke
 SEEDS ?= 0,1,2,3,4
 
 .PHONY: help test smoke figures reproduce-all reproduce-dupont reproduce-chen d3-faithful d3-long topology \
-        d1 d2 d3 d4 d8 c1 c2 c3 c4 slice-grid budget c2-guard c2-norm c2-vode chen-logs \
+        d1 d2 d3 d4 d8 c1 c2 c3 c4 slice-grid budget c2-guard c2-norm c2-vode c1-reference chen-logs \
         fig-d1 fig-d2 fig-d3 fig-d4 fig-d8 fig-c1 fig-c2 fig-c3 fig-c4 \
         fig-slice-grid env docker-build docker-smoke clean
 
@@ -37,6 +37,7 @@ help:
 	@echo "  topology    topology diagnostics, spheres field      (CPU)"
 	@echo "  d4          matched-parameter CIFAR-10             (4.3 h, measured)"
 	@echo "  c1          solver dynamics                        (~3.5 h)"
+	@echo "  c1-reference is the claim-5 reference converged?      (~35 min, GPU)"
 	@echo "  c2          backward against forward NFE           (~1-2 h)"
 	@echo "  c3          NFE growth and stiffening              (~3 h)"
 	@echo "  c2-norm     C2 with three adjoint error norms, MNIST field (GPU)"
@@ -96,6 +97,7 @@ fig-d8:  ## the 1-D crossing flow
 
 fig-c1:  ## solver dynamics
 	$(PY) -m scripts.c1_report
+	$(PY) -m scripts.c1_reference_check --from_csv
 
 fig-c2:  ## backward against forward NFE, and the diagnosis
 	$(PY) -m scripts.plot_c2_surface
@@ -123,7 +125,7 @@ reproduce-all: reproduce-dupont reproduce-chen slice-grid figures
 	@echo "Done. Results under results/, figures under figures/."
 
 reproduce-dupont: d8 d1 d2 d3 d4 d3-faithful d3-long topology  
-reproduce-chen: c4 c2 c3 c1 c2-norm c2-vode
+reproduce-chen: c4 c2 c3 c1 c2-norm c2-vode c1-reference
 
 d8:  ## 1-D crossing flow, tolerance ladder and reconstruction check
 	CUDA_VISIBLE_DEVICES="" $(PY) -m scripts.train_crossing_flow --seeds $(SEEDS) \
@@ -182,6 +184,9 @@ c2: c2-guard  ## backward against forward NFE, and why it does not match
 	$(PY) -m scripts.run_c2_diagnosis --field spheres --seeds $(SEEDS) --untrained
 	$(PY) -m scripts.run_c2_diagnosis --field mnist --seeds 0,1,2 \
 	  --solvers dopri5,bosh3,scipy:LSODA --tols 1e-3,1e-5 --batch 8 --ref_tol 1e-7
+
+c1-reference:  ## compare the claim-5 reference, dopri8 at 1e-8, with a tighter one
+	$(PY) -m scripts.c1_reference_check --seeds 0
 
 c2-vode:  ## the original's solver, VODE implicit Adams, on our convolutional field
 	$(PY) -m scripts.run_c2_vode --seeds 0,1,2 --tols 1e-5,1e-3 --batch 8 --ref_tol 1e-7
