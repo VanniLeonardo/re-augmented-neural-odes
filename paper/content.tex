@@ -538,6 +538,17 @@ adaptive solver is not cheaper here. On the toy field, \texttt{scipy:LSODA} give
 2159 and \texttt{scipy:BDF} gives 28, against 25 for \texttt{dopri5}. On the convolutional
 field no SciPy configuration finished within the limit.
 
+We later ran the original's own solver. \texttt{torchdiffeq} cannot drive VODE, so we wrote its
+adjoint directly, following the code the authors shared: the augmented reverse system integrated
+backwards by VODE's implicit Adams method at the forward tolerance, with the field evaluated in
+\texttt{torch} and the gradients checked against direct backpropagation. On the same three
+trained convolutional fields it gives a median ratio of \textbf{108.9}, against 123.25 for
+\texttt{dopri5}, and on the two-dimensional field \textbf{9.0} against 32.6. It is the more
+expensive solver in both directions, and it moves the ratio by a factor of 1.1 and 3.6 where the
+gap to the original is a factor of about 130. The solver family is not the explanation either.
+At the looser tolerances of the original's figure its gradients fail our one-percent check on
+both fields, so that part of the range cannot be compared here.
+
 \textbf{Adjoint tolerance.} This is the dominant factor. The reverse system need not be solved
 at the tolerance of the forward pass, but \texttt{torchdiffeq} couples the two by default, and
 so did we. Solving the adjoint at a tolerance 100 times looser reduces the ratio by a factor
@@ -593,8 +604,8 @@ A VODE-style norm reduces the ratio from 128 to 79, by 1.6 times, and the semino
 The explanation is refuted. Two of the three retrained fields pass both checks; the third
 narrowly fails the reconstruction check at this tolerance and is excluded, although its
 unchecked ratios fall by a similar factor. The gap between our ratio and the original's
-corrected value of about 0.8 therefore remains unexplained: neither the adjoint tolerance, nor
-the stiff-capable solvers we could run, nor the error norm accounts for it.
+corrected value of about 0.8 therefore remains unexplained: neither the adjoint tolerance,
+nor the solver, including the original's own, nor the error norm accounts for it.
 
 The original's corrected value is reachable in a checked configuration. The lowest ratio
 we observe is 0.78. Reaching it requires solving the adjoint at a looser tolerance than the
@@ -604,12 +615,14 @@ and on our convolutional field it is 119. We therefore report claim 6 as not rep
 that the quantity is a property of the configuration of the adjoint rather than of the adjoint
 method. 
 
-One limitation bounds this conclusion. We could not evaluate the solver used by the original.
-The implicit Adams method in \texttt{torchdiffeq} is fixed-step, so its evaluation count is set
-by the step count rather than by stiffness, and the adaptive stiff-capable alternatives do not
-complete on the convolutional field. We can therefore state that, within our configuration, the ratio is dominated by the adjoint
-tolerance and is not reduced by the stiff-capable solvers we could run. The original's logs now
-give its value in its own configuration, about 0.8, but we have not run VODE on our fields.
+One limitation bounds this conclusion, and it is now the field itself. Three named differences
+between the two configurations have been ruled out: the adjoint tolerance, which both couple to
+the forward tolerance; the solver, including the original's own; and the error norm. The
+original's network is smaller, group-normalised and trained for 120 epochs at a tolerance of
+$10^{-2}$, while ours trains for five epochs at $10^{-3}$. A reverse pass costing about a
+hundred times the forward therefore looks like a property of the trained field rather than of
+the adjoint method. We did not vary the architecture and the training budget to test that, and
+we do not claim it.
 
 \resfig{../figures/c2_diagnosis/c2_diagnosis.png}
   {Claim 6. Backward over forward NFE against forward tolerance, on the toy field (left) and

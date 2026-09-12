@@ -1110,3 +1110,58 @@ that check does not depend on the norm, and is excluded.
   Tolerance (same in both), stiff-capable solvers ([6] H1) and the error norm are ruled out as
   sufficient causes. The original's solver itself, VODE implicit Adams, was not run on our fields.
 - Peak memory 1.7 GB.
+
+## [12] C2 WITH THE ORIGINAL'S SOLVER — PRE-DECLARED (2026-09-12, written before the run)
+
+Question: the tolerance ([6]) and the error norm ([11]) do not explain the gap between our
+backward/forward ratio and the original's corrected 0.8 ([10]). The last named difference is the
+solver. Does VODE implicit Adams, the original's solver, with the reverse system solved by the
+same call at the same tolerance, give a ratio near 0.8 on our fields?
+
+Setup: `scripts/run_c2_vode.py`, a VODE adjoint written for this (torchdiffeq cannot drive VODE):
+the augmented system [y, adj_y, adj_params] integrated backwards with VODE at the forward
+tolerance, the field evaluated in torch. Counting as everywhere else: forward NFE is field
+evaluations in the forward solve, backward NFE evaluations of the augmented system. Gradients are
+checked against direct backpropagation at 1e-7 (< 1%), the reconstruction check runs with the
+same solver and tolerance (< 1e-2), and `tests/test_vode_adjoint.py` pins the adjoint against
+direct backpropagation on a small field.
+
+Primary: the MNIST convolutional field, the cached C1 checkpoints, seeds 0, 1, 2, batch 8,
+tolerance 1e-5 -- the tolerance of the committed dopri5 cell, whose median ratio is 123.25.
+Tolerance 1e-3 is run for context. Only cells passing both checks count.
+
+- SUPPORTED if the median ratio at 1e-5 is <= 2: the solver family explains the gap.
+- REFUTED if it is >= 20: it does not.
+- PARTIAL in between.
+- A cell that exceeds the 30-minute cap is recorded as data (`capped=1`). The original's solver
+  being unable to integrate our field inside that cap would itself be the answer.
+
+Secondary, no threshold: the 2-D spheres field at 100 epochs, 5 seeds, where the committed
+dopri5 ratio is about 25 at 1e-5.
+
+Reading the outcome: our field is not their field, since the architecture and the training budget
+differ. A low ratio implicates the solver. A high ratio points at the field instead, and leaves
+the gap open.
+
+## [12] C2 WITH THE ORIGINAL'S SOLVER — RESULT (70 min; `results/c2_vode/`)
+
+`scripts/c2_vode_report.py`. 16 cells, 6 pass both checks. Every 1e-3 cell fails the gradient
+check, on both fields, and is excluded: at the loose end of the original's range this adjoint does
+not produce correct gradients on our fields. Two of five toy seeds also fail it at 1e-5.
+
+| field | tol | seeds | fwd NFE | bwd NFE | ratio (median) | dopri5, committed |
+|---|---|---|---|---|---|---|
+| mnist | 1e-5 | 3 | 335 | 40550 | **108.90** | 123.25 |
+| spheres | 1e-5 | 3 of 5 | 179 | 2297 | **9.01** | 32.58 |
+
+- REFUTED, as pre-declared (>= 20 on the convolutional field). The original's solver moves the
+  ratio by 1.1 times on the convolutional field and 3.6 times on the toy field, where the gap to
+  0.8 is a factor of about 130. VODE is the more expensive solver in both directions: on the
+  convolutional field 335 forward evaluations against 92 for dopri5, and 40550 backward against
+  11942.
+- The MNIST fields are the cached C1 checkpoints, so these are the same three trained fields the
+  committed dopri5 cell used.
+- With [6] and [11]: tolerance, error norm and solver family are all ruled out. What remains is
+  the field itself. The original's network is smaller, group-normalised and trained for 120
+  epochs at a tolerance of 1e-2 (its `training_logs`), where ours trains for five epochs at 1e-3.
+  Not tested, and not claimed: varying the architecture and the budget is a separate experiment.
