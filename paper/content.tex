@@ -492,8 +492,7 @@ there do not track the flow. Among measurements that pass the check, the cost is
 Cost therefore rises with tolerance wherever the solver is integrating, and behaves
 irregularly where it is not.
 
-Two further observations follow from this experiment. First, the cost of the reference grows
-by a factor of 5 to 7 per decade of tolerance, where an eighth-order method on a non-stiff
+Two further observations follow from this experiment. First, the cost of the reference grows by a factor of between 4.7 and 7.7 per decade of tolerance, where an eighth-order method on a non-stiff
 field would cost about 1.3 times per decade. This is a direct measurement of the stiffness of
 a trained field, and it explains why high-accuracy references on these models are expensive.
 Second, a nominal tolerance is not comparable across solvers. At $10^{-5}$, \texttt{dopri5}
@@ -502,7 +501,8 @@ uses 116 function evaluations and sits at the edge of the reconstruction check, 
 magnitude smaller. The tolerance is a request rather than a guarantee, and the reconstruction
 check is what makes measurements comparable.
 
-The reference itself is not exact, and we measured how inexact. On the same field its endpoint
+The reference itself is not exact, and we measured how inexact. On one field retrained here
+with the same configuration, its endpoint
 at $10^{-8}$ differs from its endpoint at $10^{-9}$ by a relative $6\times10^{-6}$. That is
 below a tenth of 95\% of the errors on this axis, and between 13\% and 22\% of the four
 tightest. The monotone fall of the error, which spans four orders of magnitude, is therefore
@@ -538,24 +538,28 @@ from a configuration whose parameter gradients agree with direct backpropagation
 accuracy to within 1\%, so the cost is real and not the result of a failed solve.
 
 We tested three explanations, each with the effect size that would count recorded in advance.
-Of 456 configurations, 18 exceeded a fifteen-minute limit, and 316 passed both the
-reconstruction check and the gradient check. Only those carry the conclusions.
+Of 456 configurations, 18 did not
+complete: twelve failed at once, for memory, on the convolutional field, and six reached a
+ten-minute cap on the toy field. 316 passed both the reconstruction check and the gradient
+check. Only those carry the conclusions.
 
 \textbf{Solver family.} The original used implicit Adams, a stiff-capable method, while we
 used an explicit Runge--Kutta pair. The adjoint integrates an augmented reverse system that is
-stiffer than the forward one, so this is the natural explanation. It is wrong. A stiff-capable
-adaptive solver is not cheaper here. On the toy field, \texttt{scipy:LSODA} gives a ratio of
-2159 and \texttt{scipy:BDF} gives 28, against 25 for \texttt{dopri5}. On the convolutional
-field no SciPy configuration finished within the limit.
+stiffer than the forward one, so this is the natural explanation. It is wrong where we could test it. On the toy field, \texttt{scipy:LSODA} gives a ratio of
+2159 and \texttt{scipy:BDF} gives 28, against 25 for \texttt{dopri5}. On the convolutional field
+neither could be run at all: \texttt{scipy:LSODA} fails immediately, attempting a dense Jacobian
+of the 401{,}408-dimensional state, about 1.2 TiB, and \texttt{scipy:BDF} was not attempted for
+the same reason. The stiff-solver explanation is therefore refuted on the toy field and untested
+on the convolutional one.
 
 We later ran the original's own solver. \texttt{torchdiffeq} cannot drive VODE, so we wrote its
 adjoint directly, following the configuration of the code the authors shared: the augmented reverse system integrated
 backwards by VODE's implicit Adams method at the forward tolerance, with the field evaluated in
-\texttt{torch} and the gradients checked against direct backpropagation. On the same three
-trained convolutional fields it gives a median ratio of \textbf{108.9}, against 123.25 for
-\texttt{dopri5}, and on the two-dimensional field \textbf{9.0} against 32.6. It is the more
-expensive solver in both directions, and it moves the ratio by a factor of 1.1 and 3.6 where the
-gap to the original is a factor of about 130. The solver family is not the explanation either.
+\texttt{torch} and the gradients checked against direct backpropagation. On three convolutional fields retrained here with the
+configuration of the committed run it gives a median ratio of \textbf{108.9}, against 128.4 for
+\texttt{dopri5} measured on those same fields, and on the two-dimensional field \textbf{9.0}
+against 24.6. It is the more expensive solver in both directions, and it moves the ratio by a
+factor of 1.2 and 2.7 where the gap to the original is a factor of about 130. The solver family is not the explanation either.
 At the looser tolerances of the original's figure its gradients fail our one-percent check on
 both fields, so that part of the range cannot be compared here.
 
@@ -824,9 +828,11 @@ Two questions remained that only the original authors could answer: the toleranc
 reverse solve of Figure~3c was run relative to the forward pass, and whether its backward count
 covers evaluations of the vector field or steps of the augmented adjoint system. We wrote to
 them on 10 September 2026. David Duvenaud and Ricky Chen replied on 11 September and shared the original code
-and logs for Figure~3, which are not public. We read them only after our own experiments for
-this claim had finished, and used them only to answer these questions; none of our code derives
-from them. The reverse solve ran at the forward tolerance, and the backward count is the number
+and logs for Figure~3, which are not public. We read them after the diagnosis of claim 6 was
+complete; the two experiments that follow it, on the error norm and on the original's solver,
+were designed in response to what the code showed. No model or training code here derives from
+theirs. One diagnostic script does follow the adjoint in their integrator, so that claim 6 can
+be measured in the original's configuration, and \texttt{PROVENANCE.md} records it. The reverse solve ran at the forward tolerance, and the backward count is the number
 of evaluations of the augmented system. The logs also showed the counting artefact described under claim 6. We sent
 them our analysis, and they agreed with it and plan to update their paper. We are grateful for
 their openness in sharing unreleased code, without which this correction would not have been

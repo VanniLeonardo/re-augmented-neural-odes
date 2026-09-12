@@ -1204,3 +1204,16 @@ Yardstick: 2.678e-5, the smallest relative error the committed sweep reports (do
   confirmation of the 5 to 7 times per decade the sweep reports, and the reason a tighter
   reference was not used in the first place: 1e-10 projects to about five million evaluations.
 - Reported in the paper under claim 5 rather than left as an assumption.
+
+Correction to [12], on reading the article against the artifact: the comparison there is written
+against the committed dopri5 median of 123.25, which was measured on the cluster's fields. The
+VODE run used the fields retrained on this machine, where dopri5 gives 128.43 (from [11], seeds 0
+and 1). The like-for-like factor is 1.18, not 1.1. On the toy field the comparator with the same
+checks is 24.60 from [6], not the 32.58 of `results/c2/c2_surface.csv`, which carries no gradient
+check; the like-for-like factor is 2.7. The article now uses 128.4 and 24.6.
+
+Also on [6]: of the 18 cells recorded as not completing, twelve are the convolutional field with
+`scipy:LSODA`, which fails immediately with `MemoryError: Unable to allocate 1.17 TiB` -- a dense
+Jacobian of the 401,408-dimensional state -- and six reached a ten-minute cap on the toy field.
+`scipy:BDF` was never run on the convolutional field, so the stiff-solver explanation is refuted
+on the toy field and untested on the convolutional one. The article now says so.
