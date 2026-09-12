@@ -89,10 +89,10 @@ abstract: "We replicate Augmented Neural ODEs (Dupont et al., 2019), reimplement
            both geometries we tested. At matched parameter counts the augmented model is
            more accurate and cheaper on MNIST and CIFAR-10, although two of the four
            absolute accuracies fall short of the published values. Of the four supporting
-           claims, three reproduce. The fourth, that the backward pass costs about half the
-           forward pass in function evaluations, does not; with code shared by the original
-           authors we traced their value to a counting artefact, and the corrected value of
-           about 0.8 remains far from ours. We attach an
+           claims, two reproduce, one reproduces partially, and one does not: the claim that
+           the backward pass costs about half the forward pass in function evaluations. With
+           code shared by the original authors we traced their value to a counting artefact,
+           and the corrected value of about 0.8 remains far from ours. We attach an
            invertibility check to every measurement, because an adaptive solver at too loose
            a tolerance returns a plausible trajectory and a plausible evaluation count while
            never tracking the flow, and the vector field of a Neural ODE stiffens as it

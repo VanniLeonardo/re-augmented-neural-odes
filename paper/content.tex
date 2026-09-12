@@ -53,9 +53,9 @@ one-dimensional impossibility result reproduces in a strong form: the Neural ODE
 error floor the proposition predicts. The cost and generalisation signatures reproduce on two
 geometries, and we extend the generalisation experiment into a systematic sweep. On the image
 benchmarks the ordering reproduces on both datasets, while two of the four absolute
-accuracies fall below the published values. Of the four secondary claims, three reproduce,
-one condition stated in advance is violated at tolerances where the solver is not
-integrating, and one claim does not reproduce. We do not attempt the benchmark table of Chen
+accuracies fall below the published values. Of the four supporting claims, two reproduce, one
+reproduces partially, because a condition stated in advance is violated at tolerances where the
+solver is not integrating, and one does not reproduce. We do not attempt the benchmark table of Chen
 et al.
 
 \section{Scope of reproducibility}
@@ -227,7 +227,7 @@ original protocol.
 
 Two departures matter most. We run five seeds against the original twenty repeats on
 the toy task, so our intervals are wider and small differences between arms should not be
-over-read. For the secondary claims we integrate with an explicit Runge--Kutta method where
+over-read. For the supporting claims we integrate with an explicit Runge--Kutta method where
 Chen et al.\ used implicit Adams. That choice is deliberate, because it is the method a
 current user of \texttt{torchdiffeq} will reach for by default, but it is not neutral, and
 Section~\ref{sec:claim6} shows that it matters for claim 6.
@@ -677,8 +677,8 @@ They show that the measurement repeats, not that it holds across independent sam
 \section{Discussion}
 \label{sec:discussion}
 
-Table~\ref{tab:summary} collects the outcomes. Six of the eight claims reproduce, two of them
-with qualifications, and one does not. Both qualified cases keep the structure of the original
+Table~\ref{tab:summary} collects the outcomes. Five of the eight claims reproduce, two reproduce
+partially, and one is not reproduced. Both partial cases keep the structure of the original
 claim and miss on a number. On the image benchmarks the ordering and the cost advantage
 reproduce on both datasets, while two of the four absolute accuracies fall short. On the solver
 dynamics both substantive relations hold, while a condition we recorded as monotone is violated
@@ -830,7 +830,7 @@ augmented model does not. It generalises poorly into a region absent from traini
 augmentation repairs this at every width and on both geometries we tested. At matched parameter
 counts the augmented model is more accurate and cheaper on both image benchmarks, although two
 of the four absolute accuracies fall below the published values. Of the four supporting claims
-taken from Chen et al., three reproduce and one does not.
+taken from Chen et al., two reproduce, one reproduces partially, and one is not reproduced.
 
 The results that proved fragile are those about cost. Cost is a property of the solver as much
 as of the model. An adaptive solver at too loose a tolerance returns an answer and an evaluation
