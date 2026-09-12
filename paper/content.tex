@@ -150,8 +150,7 @@ $1\times1$, $3\times3$ and $1\times1$ convolutions. The time is injected as an a
 channel before every convolution. Augmentation adds $p$ zero channels to the input. Capacity
 is matched between NODE and ANODE through the number of filters, as in the original. On MNIST
 we use 92 filters (85{,}316 parameters) against 64 filters with $p=5$ (85{,}462). On CIFAR-10
-we use 125 filters (173{,}611) against 64 filters with $p=10$ (172{,}452). These counts are
-0.5\% to 1\% above the counts stated in the original Table 1. We attribute the difference to
+we use 125 filters (173{,}611) against 64 filters with $p=10$ (172{,}452). These counts are 0.4\% to 1.1\% above the counts stated in the original Table 1. We attribute the difference to
 the flattening readout and record it in Section~\ref{sec:deviations}. The harness asserts that
 the two arms are matched to within 2\% before every run.
 
@@ -229,8 +228,7 @@ Two departures matter most. We run five seeds against the original twenty repeat
 the toy task, so our intervals are wider and small differences between arms should not be
 over-read. For the supporting claims we integrate with an explicit Runge--Kutta method where
 Chen et al.\ used implicit Adams. That choice is deliberate, because it is the method a
-current user of \texttt{torchdiffeq} will reach for by default, but it is not neutral, and
-Section~\ref{sec:claim6} shows that it matters for claim 6.
+current user of \texttt{torchdiffeq} will reach for by default, but it is not neutral, and the diagnosis of claim 6 examines it directly.
 
 \begin{table}[h]
   \centering
@@ -270,8 +268,7 @@ distribution is skewed. The statistic used is stated with each result.
 Before each run we recorded the condition under which the claim would count as refuted. The
 conditions were written down in advance, so that the observation decides the outcome. They are
 quoted with the results below, including two cases in which our own expectation was wrong.
-Every result row also records the hardware that produced it, which Section~\ref{sec:claim5}
-shows was necessary.
+Every result row also records the hardware that produced it, which the claim-5 results show was necessary.
 
 The code, the per-seed result files behind every number in this article, and the scripts that
 produce every figure are available in the repository cited at the end. One command rebuilds
@@ -340,8 +337,9 @@ steepen to approximate a map it cannot represent.
 \subsubsection{Claim 2: cost growth with training budget}
 
 We swept the training budget from 25 to 1000 epochs and measured at a checked tolerance of
-$10^{-6}$. On the concentric spheres, the median forward NFE of the Neural ODE grows by a
-factor of \textbf{1.74}, and that of the augmented model by \textbf{1.04}. At the original
+$10^{-6}$. On the concentric spheres, the median forward NFE of the Neural ODE grows by a factor of \textbf{1.74}
+between 25 and 500 epochs, the range of the condition we recorded in advance, and that of the
+augmented model by \textbf{1.04}. At the original
 budget of 50 epochs, the Neural ODE needs \textbf{218} function evaluations against
 \textbf{170} for the augmented model. Both models classify the data almost perfectly at that
 budget, with dense accuracies of 0.996 and 1.000. The two models are therefore separated by
@@ -352,7 +350,8 @@ Three of sixty measurements fail the reconstruction check: one seed at a budget 
 another at 500 and 1000. Their flows become too stiff to integrate at $10^{-6}$, which makes
 them the most extreme instances of the effect under study. The factors above are medians over
 all five seeds. Restricted to the four seeds that pass the check at both ends of the sweep, the
-growth factor of the Neural ODE is 1.37, so the effect holds without them.
+growth factor of the Neural ODE is 1.37, which by coincidence equals the value for the circles
+geometry above, so the effect holds without them.
 
 \resfig{../figures/budget/nfe_vs_epoch.png}
   {Claim 2. Forward NFE against training budget on concentric spheres, at a checked tolerance.
@@ -378,7 +377,9 @@ extension below uses ten seeds.
 The original demonstrates this claim with one wedge on one geometry. We swept the augmentation
 dimension $p \in \{0,1,2,3,5\}$, the wedge width $\{\pi/8, \pi/5, \pi/3\}$ and two geometries
 over ten seeds, giving 300 runs. Each run carries the same reconstruction check, and six fail
-it and are excluded. The augmented model generalises better at every width, on both
+it and are excluded. The five seeds of the headline run are among these ten, with identical
+values, so the cell that repeats it reads 0.744 rather than 0.619: two of the five added seeds
+are ones on which the Neural ODE generalises perfectly. The augmented model generalises better at every width, on both
 geometries, and for every $p \ge 1$. No condition stated in advance was violated.
 
 The effect does not grow without limit. On the spheres, the advantage in held-out accuracy
@@ -539,7 +540,7 @@ adaptive solver is not cheaper here. On the toy field, \texttt{scipy:LSODA} give
 field no SciPy configuration finished within the limit.
 
 We later ran the original's own solver. \texttt{torchdiffeq} cannot drive VODE, so we wrote its
-adjoint directly, following the code the authors shared: the augmented reverse system integrated
+adjoint directly, following the configuration of the code the authors shared: the augmented reverse system integrated
 backwards by VODE's implicit Adams method at the forward tolerance, with the field evaluated in
 \texttt{torch} and the gradients checked against direct backpropagation. On the same three
 trained convolutional fields it gives a median ratio of \textbf{108.9}, against 123.25 for
@@ -579,8 +580,10 @@ count after the first is $13 = 6 + 6 + 1$. Where they vary most, at the three ti
 tolerances, each recorded forward count correlates with the previous batch's backward count
 (0.56 to 0.77) rather than with its own (0.25 to 0.29). A backward count somewhat below the
 forward count, plotted against their sum, appears as about one half
-(Figure~\ref{fig:chen3c}). Corrected, the original's ratio is \textbf{0.78 to 0.86} between $10^{-5}$ and $10^{-1}$.
-The original authors have reviewed this analysis and agree with it. The original took the ratio of one half as
+(Figure~\ref{fig:chen3c}). Corrected, the original's ratio is \textbf{0.78 to 0.86} between $10^{-5}$ and $10^{-1}$,
+and 1.00 at a tolerance of 1, where the counts are smallest.
+The original authors have reviewed this analysis and agree with it
+(D. Duvenaud, personal communication, 11 September 2026). The original took the ratio of one half as
 evidence that the adjoint is cheaper than backpropagating through the solver. At 0.8 that
 argument still holds for the original's configuration, by a smaller margin; in ours the
 reverse pass costs 13 to 123 times the forward pass.
@@ -805,8 +808,7 @@ and resumes from completed ones.
 \subsection{Communication with the original authors}
 \label{sec:communication}
 
-Claim 6 is the one we report as not reproduced. Before attributing the difference to the original, we measured its cause. The diagnosis in
-Section~\ref{sec:claim6} tests three explanations against thresholds recorded in advance and
+Claim 6 is the one we report as not reproduced. Before attributing the difference to the original, we measured its cause. The diagnosis of claim 6 tests three explanations against thresholds recorded in advance and
 identifies the coupling between the adjoint and forward tolerances as the dominant one.
 
 Two questions remained that only the original authors could answer: the tolerance at which the
@@ -816,7 +818,7 @@ them on 10 September 2026. David Duvenaud and Ricky Chen replied on 11 September
 and logs for Figure~3, which are not public. We read them only after our own experiments for
 this claim had finished, and used them only to answer these questions; none of our code derives
 from them. The reverse solve ran at the forward tolerance, and the backward count is the number
-of evaluations of the augmented system. The logs also showed the counting artefact described in Section~\ref{sec:claim6}. We sent
+of evaluations of the augmented system. The logs also showed the counting artefact described under claim 6. We sent
 them our analysis, and they agreed with it and plan to update their paper. We are grateful for
 their openness in sharing unreleased code, without which this correction would not have been
 possible.

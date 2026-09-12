@@ -4,7 +4,7 @@
 # Title of the article:
 #  - "[Re]" prefix = successful replication, "[¬Re]" = failed replication.
 #  - We use [Re]: the central claims of the target paper reproduce. Two absolute
-#    numbers undershoot and one secondary Chen claim does not reproduce; those are
+#    numbers undershoot and one supporting Chen claim does not reproduce; those are
 #    reported as partial results in the paper, not as a failed replication. If the
 #    editors read the MNIST NODE undershoot as a failure, this prefix must change.
 title: "[Re] Augmented Neural ODEs"
@@ -92,7 +92,8 @@ abstract: "We replicate Augmented Neural ODEs (Dupont et al., 2019), reimplement
            claims, two reproduce, one reproduces partially, and one does not: the claim that
            the backward pass costs about half the forward pass in function evaluations. With
            code shared by the original authors we traced their value to a counting artefact,
-           and the corrected value of about 0.8 remains far from ours. We attach an
+           and the corrected value of about 0.8 remains far from ours, a
+           difference we could not attribute to the tolerance, the error norm or the solver. We attach an
            invertibility check to every measurement, because an adaptive solver at too loose
            a tolerance returns a plausible trajectory and a plausible evaluation count while
            never tracking the flow, and the vector field of a Neural ODE stiffens as it
