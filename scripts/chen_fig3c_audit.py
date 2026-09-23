@@ -82,12 +82,13 @@ def main() -> None:
     p.add_argument("--figure", help="write panel (c), as plotted and corrected, to this PNG")
     args = p.parse_args()
     data = list(blocks(args.source))
-    print(f"{'tol':6} {'n':>3} | {'r(L,B_prev)':>11} {'r(L,B_same)':>11} | {'F':>5} {'B':>4} | "
+    print(f"{'tol':6} {'n':>3} | {'r(L,B_prev)':>11} {'r(L,B_same)':>11} | {'L':>5} {'F':>5} {'B':>4} | "
           f"{'B/F':>5} {'B/L plotted':>11} | sd L -> sd F")
     for tol, L, B in data:
         F = inferred_forward(L, B)
         print(f"{tol:6} {len(L):3d} | {corr(L[1:], B[:-1]):11.2f} {corr(L[1:], B[1:]):11.2f} | "
-              f"{st.median(F):5.0f} {st.median(B):4.0f} | {st.median(b / f for b, f in zip(B, F)):5.2f} "
+              f"{st.median(L[1:]):5.0f} {st.median(F):5.0f} {st.median(B):4.0f} | "
+              f"{st.median(b / f for b, f in zip(B, F)):5.2f} "
               f"{st.median(b / l for b, l in zip(B[1:], L[1:])):11.2f} | "
               f"{st.pstdev(L[1:]):5.2f} -> {st.pstdev(F[1:]):5.2f}")
     if args.export:

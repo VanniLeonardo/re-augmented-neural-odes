@@ -609,14 +609,41 @@ of evaluations of the augmented system, as in ours. The forward counts plotted i
 however, are not forward counts alone. The evaluation counter is reset after the forward count is
 recorded, and the backward pass then increments it. Each recorded forward count therefore
 contains the previous batch's backward count as well, plus one evaluation that the adjoint makes
-outside the reverse solve. Where the counts are constant this accounts for every logged value
-exactly: at a tolerance of 1, every backward pass takes 6 evaluations and every recorded forward
-count after the first is $13 = 6 + 6 + 1$. Where they vary most, at the three tightest
-tolerances, each recorded forward count correlates with the previous batch's backward count
-(0.56 to 0.77) rather than with its own (0.25 to 0.29). A backward count somewhat below the
-forward count, plotted against their sum, appears as about one half
+outside the reverse solve. Table~\ref{tab:chen3c} sets out the counts. In every row the median
+recorded forward count is the corrected forward count plus the backward count plus one, to
+within one evaluation. At a tolerance of 1, where the counts are constant, every backward pass
+takes 6 evaluations and every recorded forward count after the first is exactly $13 = 6 + 6 + 1$.
+Where the counts vary most, at the three tightest tolerances, each recorded forward count
+correlates with the previous batch's backward count rather than with its own. A backward count
+somewhat below the forward count, plotted against their sum, appears as about one half
 (Figure~\ref{fig:chen3c}). Corrected, the original's ratio is \textbf{0.78 to 0.86} between $10^{-5}$ and $10^{-1}$,
 and 1.00 at a tolerance of 1, where the counts are smallest.
+
+\begin{table}[h]
+  \centering
+  \small
+  \caption{Claim 6. Evaluation counts in the original logs behind Figure~3c, medians over the
+           101 batches at each tolerance. $B$ is the backward count and $L$ the recorded forward
+           count, which the original plots. The corrected forward count is
+           $F_k = L_k - B_{k-1} - 1$, and $L_0/2$ for the first batch, whose forward pass runs
+           twice; $L$ and $B/L$ exclude that batch. The last two columns correlate $L_k$ with the
+           previous and with the same batch's backward count, and are undefined where the
+           backward count is constant. From \texttt{scripts/chen\_fig3c\_audit.py}.}
+  \label{tab:chen3c}
+  \begin{tabular}{@{}lrrrcccc@{}}
+    \toprule
+    Tolerance & $B$ & $L$ & $F$ & $B/L$, plotted & $B/F$, corrected & $r(L_k, B_{k-1})$ & $r(L_k, B_k)$ \\
+    \midrule
+    $10^{-5}$ & 50 & 116 & 64 & 0.44 & 0.79 & 0.77 & 0.25 \\
+    $10^{-4}$ & 26 &  60 & 32 & 0.44 & 0.81 & 0.61 & 0.26 \\
+    $10^{-3}$ & 15 &  36 & 20 & 0.43 & 0.78 & 0.56 & 0.29 \\
+    $10^{-2}$ &  9 &  21 & 11 & 0.43 & 0.82 & 0.10 & 0.05 \\
+    $10^{-1}$ &  6 &  14 &  7 & 0.43 & 0.86 & --   & --   \\
+    $1$       &  6 &  13 &  6 & 0.46 & 1.00 & --   & --   \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
 The original authors have reviewed this analysis and agree with it
 (D. Duvenaud, personal communication, 11 September 2026). The original took the ratio of one half as
 evidence that the adjoint is cheaper than backpropagating through the solver. At 0.8 that argument still holds for the original's configuration, by a smaller margin. In ours
